@@ -1,0 +1,161 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/superpowers-session-start.sh",
+            "timeout": 10,
+            "statusMessage": "Loading superpowers..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-conflict-markers.sh",
+            "timeout": 30,
+            "statusMessage": "Checking for conflict markers..."
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/ensure-docker-running.sh",
+            "timeout": 75,
+            "statusMessage": "Ensuring Docker is running..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-python-syntax.sh",
+            "timeout": 15,
+            "statusMessage": "Checking Python syntax..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/metadata-updater.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/cleanup-stray-claude-md.sh",
+            "timeout": 10,
+            "statusMessage": "Cleaning up stray CLAUDE.md files..."
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/quality-gate-task.sh",
+            "timeout": 60,
+            "statusMessage": "Running quality gate checks..."
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/subagent-context.sh",
+            "timeout": 5,
+            "statusMessage": "Injecting project context..."
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": ["Bash"],
+    "deny": [
+      "Bash(command~=git push --force:*)",
+      "Bash(command~=git push -f:*)",
+      "Bash(command~=git push --force-with-lease:*)",
+      "Bash(command~=git reset --hard:*)",
+      "Bash(command~=git clean -f:*)",
+      "Bash(command~=git clean -fd:*)",
+      "Bash(command~=git clean -fx:*)",
+      "Bash(command~=git checkout --force:*)",
+      "Bash(command~=git checkout -f:*)",
+      "Bash(command~=git branch -D:*)",
+      "Bash(command~=git filter-branch:*)",
+      "Bash(command~=git push --delete:*)",
+      "Bash(command~=git rm -rf:*)",
+      "Bash(command~=git rm -fr:*)",
+      "Bash(command~=git stash drop:*)",
+      "Bash(command~=git stash clear:*)",
+      "Bash(command~=git reflog expire:*)",
+      "Bash(command~=git gc --prune:*)",
+      "Bash(command~=git update-ref -d:*)",
+      "Bash(command~=git commit --amend:*)",
+      "Bash(command~=git commit --no-verify:*)",
+      "Bash(command~=git commit -n:*)",
+      "Bash(command~=git --no-verify:*)",
+      "Bash(command~=git --no-gpg-sign:*)",
+      "Bash(command~=git config:*)",
+      "Bash(command~=git rebase -i:*)",
+      "Bash(command~=git rebase --interactive:*)",
+      "Bash(command~=gh repo delete:*)",
+      "Bash(command~=gh repo archive:*)",
+      "Bash(command~=gh pr close --delete-branch:*)",
+      "Bash(command~=gh pr close -d:*)",
+      "Bash(command~=gh pr merge --delete-branch:*)",
+      "Bash(command~=gh pr merge -d:*)",
+      "Bash(command~=gh issue delete:*)",
+      "Bash(command~=gh release delete:*)",
+      "Bash(command~=gh run delete:*)",
+      "Bash(command~=gh secret delete:*)",
+      "Bash(command~=gh variable delete:*)",
+      "Bash(command~=gh label delete:*)",
+      "Bash(command~=gh workflow disable:*)",
+      "Bash(command~=gh extension remove:*)",
+      "Bash(command~=gh gpg-key delete:*)",
+      "Bash(command~=gh ssh-key delete:*)",
+      "Bash(command~=gh api -X DELETE:*)",
+      "Bash(command~=gh api --method DELETE:*)",
+      "Bash(command~=gh auth refresh --force:*)",
+      "Bash(command~=gh pr create --base main:*)",
+      "Bash(command~=gh pr create -B main:*)",
+      "Bash(command~=gh pr create main:*)",
+      "Bash(command~=git pull origin main:*)",
+      "Bash(command~=git pull main:*)",
+      "Bash(command~=git push origin main:*)",
+      "Bash(command~=git push origin develop:*)",
+      "Bash(command~=git push main:*)",
+      "Bash(command~=git push develop:*)",
+      "Bash(command~=git checkout main:*)",
+      "Bash(command~=git checkout develop:*)",
+      "Bash(command~=git switch main:*)",
+      "Bash(command~=git switch develop:*)",
+      "Bash(command~=git merge main:*)",
+      "Bash(command~=git merge develop:*)",
+      "Bash(command~=git merge origin/main:*)",
+      "Bash(command~=git merge origin/develop:*)",
+      "Bash(command~=git rebase origin main:*)",
+      "Bash(command~=git rebase origin develop:*)",
+      "Bash(command~=git rebase main:*)",
+      "Bash(command~=git rebase develop:*)"
+    ],
+    "ask": ["Bash(command~=git push:*)"]
+  }
+}
