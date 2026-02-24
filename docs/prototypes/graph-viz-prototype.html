@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VigiaBR — Graph Proximity Prototype</title>
+  <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #0f1117; color: #e1e4e8; }
+
+    #cy { width: 100vw; height: 100vh; }
+
+    /* Legend */
+    #legend {
+      position: fixed; top: 16px; left: 16px; z-index: 10;
+      background: rgba(22, 27, 34, 0.95); border: 1px solid #30363d;
+      border-radius: 12px; padding: 16px 20px; min-width: 220px;
+    }
+    #legend h3 { font-size: 14px; margin-bottom: 12px; color: #58a6ff; }
+    .legend-item { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 12px; }
+    .legend-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+    .legend-dot.cluster { border-radius: 4px; border: 2px dashed rgba(255,255,255,0.4); }
+
+    /* Controls */
+    #controls {
+      position: fixed; top: 16px; right: 16px; z-index: 10;
+      background: rgba(22, 27, 34, 0.95); border: 1px solid #30363d;
+      border-radius: 12px; padding: 16px 20px;
+    }
+    #controls h3 { font-size: 14px; margin-bottom: 12px; color: #58a6ff; }
+    .btn {
+      display: block; width: 100%; padding: 8px 12px; margin-bottom: 6px;
+      background: #21262d; color: #c9d1d9; border: 1px solid #30363d;
+      border-radius: 6px; cursor: pointer; font-size: 12px; text-align: left;
+    }
+    .btn:hover { background: #30363d; border-color: #58a6ff; }
+    .btn.active { background: #1f6feb33; border-color: #58a6ff; color: #58a6ff; }
+
+    /* Tooltip */
+    #tooltip {
+      position: fixed; z-index: 20; display: none;
+      background: rgba(22, 27, 34, 0.98); border: 1px solid #58a6ff;
+      border-radius: 8px; padding: 12px 16px; max-width: 320px;
+      font-size: 12px; line-height: 1.5;
+    }
+    #tooltip .tt-title { font-weight: 600; color: #58a6ff; margin-bottom: 4px; }
+    #tooltip .tt-detail { color: #8b949e; }
+    #tooltip .tt-value { color: #3fb950; font-weight: 600; }
+
+    /* Degree indicator */
+    #degree-info {
+      position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 10;
+      background: rgba(22, 27, 34, 0.95); border: 1px solid #30363d;
+      border-radius: 12px; padding: 12px 24px; text-align: center;
+    }
+    #degree-info .degree-label { font-size: 18px; font-weight: 700; color: #58a6ff; }
+    #degree-info .degree-desc { font-size: 12px; color: #8b949e; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div id="cy"></div>
+
+  <div id="legend">
+    <h3>Tipos de No</h3>
+    <div class="legend-item"><div class="legend-dot" style="background:#f0883e"></div> Mandatario</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#58a6ff"></div> PessoaFisica</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#3fb950"></div> Empresa</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#bc8cff"></div> Partido</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f778ba"></div> Emenda</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#79c0ff"></div> ContratoGov</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#d29922"></div> BemPatrimonial</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#da3633"></div> ProcessoJudicial</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#8b949e"></div> Votacao / ProjetoLei</div>
+    <hr style="border-color:#30363d; margin:10px 0">
+    <div class="legend-item"><div class="legend-dot cluster" style="background:rgba(255,255,255,0.1)"></div> Cluster (clique para expandir)</div>
+  </div>
+
+  <div id="controls">
+    <h3>Graus de Proximidade</h3>
+    <button class="btn active" onclick="showDegree(1)">1o Grau — Circulo direto</button>
+    <button class="btn" onclick="showDegree(2)">2o Grau — Conexoes do circulo</button>
+    <button class="btn" onclick="showDegree(3)">3o Grau — Rede estendida</button>
+    <button class="btn" onclick="showDegree(0)">Todos os graus</button>
+    <hr style="border-color:#30363d; margin:10px 0">
+    <button class="btn" onclick="expandCluster('cluster-assessores')">Expandir: Assessores</button>
+    <button class="btn" onclick="expandCluster('cluster-emendas')">Expandir: Emendas</button>
+    <button class="btn" onclick="expandCluster('cluster-votos')">Expandir: Votos</button>
+    <button class="btn" onclick="expandCluster('cluster-bens')">Expandir: Bens</button>
+  </div>
+
+  <div id="tooltip"></div>
+
+  <div id="degree-info">
+    <div class="degree-label">1o Grau</div>
+    <div class="degree-desc">Conexoes diretas do mandatario</div>
+  </div>
+
+<script>
+// ============================================================
+// DATA: Fake but realistic graph for Deputy "Carlos Silva"
+// ============================================================
+
+const nodes = [
+  // === CENTER ===
+  { data: { id: 'dep-carlos', label: 'Dep. Carlos Silva\n(PL-SP)', type: 'mandatario', degree: 0,
+    detail: 'Deputado Federal | SCI: 720 | UF: SP\nMandato: 2023-2027' }},
+
+  // === DEGREE 1: Direct connections ===
+  // Party
+  { data: { id: 'partido-pl', label: 'PL', type: 'partido', degree: 1,
+    detail: 'Partido Liberal\nFiliado desde 2018' }},
+
+  // Family (individual — high relevance)
+  { data: { id: 'maria-silva', label: 'Maria Silva\n(esposa)', type: 'pessoa', degree: 1,
+    detail: 'Familiar | Grau: Conjuge\nCPF: ****' }},
+  { data: { id: 'joao-silva', label: 'Joao Silva\n(filho)', type: 'pessoa', degree: 1,
+    detail: 'Familiar | Grau: Filho\nCPF: ****' }},
+  { data: { id: 'ana-silva', label: 'Ana Oliveira\n(irma)', type: 'pessoa', degree: 1,
+    detail: 'Familiar | Grau: Irma\nCPF: ****' }},
+
+  // Cluster: Office staff (25 people → cluster)
+  { data: { id: 'cluster-assessores', label: '25 Assessores\nR$380K/mes', type: 'cluster-pessoa', degree: 1, isCluster: true, count: 25,
+    detail: 'Cluster: 25 funcionarios de gabinete\nFolha total: R$380.000/mes\nClique para expandir' }},
+
+  // Cluster: Assets (47 items → cluster)
+  { data: { id: 'cluster-bens', label: '47 Bens\nR$5.2M total', type: 'cluster-bem', degree: 1, isCluster: true, count: 47,
+    detail: 'Cluster: 47 bens declarados\nValor total: R$5.200.000\n2018: R$1.8M | 2022: R$5.2M\n+189% em 4 anos' }},
+
+  // Cluster: Amendments (87 → cluster)
+  { data: { id: 'cluster-emendas', label: '87 Emendas\nR$120M', type: 'cluster-emenda', degree: 1, isCluster: true, count: 87,
+    detail: 'Cluster: 87 emendas parlamentares\nValor total pago: R$120M\n2023: R$30M | 2024: R$45M | 2025: R$45M' }},
+
+  // Cluster: Votes (2,847 → cluster)
+  { data: { id: 'cluster-votos', label: '2.847 Votos', type: 'cluster-votacao', degree: 1, isCluster: true, count: 2847,
+    detail: 'Cluster: 2.847 votos em plenario\nSim: 1.920 | Nao: 680 | Abstencao: 247\nClique para filtrar por tema' }},
+
+  // Resolved donors (important — individual if <10)
+  { data: { id: 'construtora-abc', label: 'Construtora ABC\nCNPJ: 12.345/0001', type: 'empresa', degree: 1,
+    detail: 'Doador | R$500.000 (2022)\nCNAE: Construcao civil\nSituacao: Ativa' }},
+  { data: { id: 'roberto-mendes', label: 'Roberto Mendes\n(doador)', type: 'pessoa', degree: 1,
+    detail: 'Doador PF | R$150.000 (2022)\nCPF: ****' }},
+
+  // === DEGREE 2: Connections of the inner circle ===
+  // Maria's company
+  { data: { id: 'empresa-ms', label: 'MS Consultoria\nCNPJ: 98.765/0001', type: 'empresa', degree: 2,
+    detail: 'Empresa | Maria Silva: socia 60%\nCNAE: Consultoria\nCapital: R$200.000\nAberta em 2019' }},
+
+  // Joao's company
+  { data: { id: 'empresa-js', label: 'JS Tech LTDA\nCNPJ: 11.222/0001', type: 'empresa', degree: 2,
+    detail: 'Empresa | Joao Silva: socio 100%\nCNAE: Tecnologia\nCapital: R$50.000\nAberta em 2021' }},
+
+  // Amendment beneficiary companies
+  { data: { id: 'empresa-xyz', label: 'XYZ Engenharia\nCNPJ: 33.444/0001', type: 'empresa', degree: 2,
+    detail: 'Beneficiaria de emenda\nR$8.5M recebidos via contratos\nCNAE: Engenharia' }},
+
+  // Government contracts
+  { data: { id: 'contrato-001', label: 'Contrato #2024/001\nR$3.2M', type: 'contrato', degree: 2,
+    detail: 'Contrato Gov | Ministerio Infraestrutura\nObjeto: Pavimentacao BR-101\nValor: R$3.200.000\nAssinado: 2024-03-15' }},
+  { data: { id: 'contrato-002', label: 'Contrato #2024/055\nR$5.3M', type: 'contrato', degree: 2,
+    detail: 'Contrato Gov | Ministerio Saude\nObjeto: Construcao UBS\nValor: R$5.300.000\nAssinado: 2024-06-20' }},
+
+  // MS Consultoria contract (family company got gov contract!)
+  { data: { id: 'contrato-003', label: 'Contrato #2023/112\nR$1.8M', type: 'contrato', degree: 2,
+    detail: 'Contrato Gov | Prefeitura Campinas\nObjeto: Consultoria administrativa\nValor: R$1.800.000\nAssinado: 2023-11-10' }},
+
+  // Lawsuit
+  { data: { id: 'processo-01', label: 'Proc. 0001234\nTJSP', type: 'processo', degree: 2,
+    detail: 'Processo Judicial | TJSP\nTipo: Acao Civil Publica\nParte: Ana Oliveira (re)\nValor: R$500.000' }},
+
+  // Bill connected to vote
+  { data: { id: 'pl-001', label: 'PL 2345/2024\nReforma tributaria', type: 'projeto', degree: 2,
+    detail: 'Projeto de Lei | PL 2345/2024\nEmenta: Reforma tributaria\nSituacao: Em tramitacao' }},
+
+  // Roberto Mendes's company
+  { data: { id: 'empresa-rm', label: 'RM Participacoes\nCNPJ: 55.666/0001', type: 'empresa', degree: 2,
+    detail: 'Empresa | Roberto Mendes: socio 80%\nCNAE: Holding\nCapital: R$5.000.000' }},
+
+  // === DEGREE 3: Extended web ===
+  // Other partner in Construtora ABC
+  { data: { id: 'pedro-alves', label: 'Pedro Alves\n(socio ABC)', type: 'pessoa', degree: 3,
+    detail: 'Socio da Construtora ABC: 30%\nTambem socio de 2 outras empresas' }},
+
+  // Pedro also donated to another politician
+  { data: { id: 'dep-fernanda', label: 'Dep. Fernanda Lima\n(PT-RJ)', type: 'mandatario-other', degree: 3,
+    detail: 'Deputada Federal | SCI: 450 | UF: RJ\nRecebeu doacao de Pedro Alves: R$80.000' }},
+
+  // RM Participacoes holds another company that got contracts
+  { data: { id: 'empresa-sub', label: 'SubRM Servicos\nCNPJ: 77.888/0001', type: 'empresa', degree: 3,
+    detail: 'Subsidiaria de RM Participacoes\nCNAE: Servicos gerais\nCapital: R$100.000' }},
+
+  // That subsidiary got a contract
+  { data: { id: 'contrato-004', label: 'Contrato #2025/003\nR$2.1M', type: 'contrato', degree: 3,
+    detail: 'Contrato Gov | Min. Educacao\nObjeto: Manutencao escolar\nValor: R$2.100.000' }},
+
+  // XYZ Engenharia partner
+  { data: { id: 'carlos-eng', label: 'Carlos Engenheiro\n(socio XYZ)', type: 'pessoa', degree: 3,
+    detail: 'Socio XYZ Engenharia: 50%\nTambem socio de Engenharia Total LTDA' }},
+
+  // Another lawsuit connecting degree-2 company
+  { data: { id: 'processo-02', label: 'Proc. 0005678\nTRF-3', type: 'processo', degree: 3,
+    detail: 'Processo Judicial | TRF-3\nTipo: Improbidade administrativa\nParte: Construtora ABC (re)\nValor: R$2.000.000' }},
+];
+
+const edges = [
+  // === DEGREE 1 edges ===
+  { data: { source: 'dep-carlos', target: 'partido-pl', label: 'FILIADO_A', type: 'filiacao', degree: 1 }},
+  { data: { source: 'dep-carlos', target: 'maria-silva', label: 'TEM_FAMILIAR\n(conjuge)', type: 'familiar', degree: 1 }},
+  { data: { source: 'dep-carlos', target: 'joao-silva', label: 'TEM_FAMILIAR\n(filho)', type: 'familiar', degree: 1 }},
+  { data: { source: 'dep-carlos', target: 'ana-silva', label: 'TEM_FAMILIAR\n(irma)', type: 'familiar', degree: 1 }},
+  { data: { source: 'dep-carlos', target: 'cluster-assessores', label: 'CONTRATOU_GABINETE', type: 'contratacao', degree: 1 }},
+  { data: { source: 'dep-carlos', target: 'cluster-bens', label: 'TEM_BEM', type: 'patrimonio', degree: 1 }},
+  { data: { source: 'dep-carlos', target: 'cluster-emendas', label: 'AUTOU_EMENDA', type: 'emenda', degree: 1 }},
+  { data: { source: 'dep-carlos', target: 'cluster-votos', label: 'VOTOU', type: 'votacao', degree: 1 }},
+  { data: { source: 'construtora-abc', target: 'dep-carlos', label: 'DOOU\nR$500K', type: 'doacao', degree: 1 }},
+  { data: { source: 'roberto-mendes', target: 'dep-carlos', label: 'DOOU\nR$150K', type: 'doacao', degree: 1 }},
+
+  // === DEGREE 2 edges ===
+  { data: { source: 'maria-silva', target: 'empresa-ms', label: 'SOCIO_DE\n60%', type: 'sociedade', degree: 2 }},
+  { data: { source: 'joao-silva', target: 'empresa-js', label: 'SOCIO_DE\n100%', type: 'sociedade', degree: 2 }},
+  { data: { source: 'cluster-emendas', target: 'contrato-001', label: 'FINANCIOU', type: 'financiamento', degree: 2 }},
+  { data: { source: 'cluster-emendas', target: 'contrato-002', label: 'FINANCIOU', type: 'financiamento', degree: 2 }},
+  { data: { source: 'contrato-001', target: 'empresa-xyz', label: 'EXECUTOU', type: 'execucao', degree: 2 }},
+  { data: { source: 'contrato-002', target: 'empresa-xyz', label: 'EXECUTOU', type: 'execucao', degree: 2 }},
+  { data: { source: 'empresa-ms', target: 'contrato-003', label: 'EXECUTOU', type: 'execucao', degree: 2 }},
+  { data: { source: 'ana-silva', target: 'processo-01', label: 'PARTE_EM\n(re)', type: 'judicial', degree: 2 }},
+  { data: { source: 'cluster-votos', target: 'pl-001', label: 'REFERE_A', type: 'referencia', degree: 2 }},
+  { data: { source: 'roberto-mendes', target: 'empresa-rm', label: 'SOCIO_DE\n80%', type: 'sociedade', degree: 2 }},
+
+  // === DEGREE 3 edges ===
+  { data: { source: 'pedro-alves', target: 'construtora-abc', label: 'SOCIO_DE\n30%', type: 'sociedade', degree: 3 }},
+  { data: { source: 'pedro-alves', target: 'dep-fernanda', label: 'DOOU\nR$80K', type: 'doacao', degree: 3 }},
+  { data: { source: 'empresa-rm', target: 'empresa-sub', label: 'CONTROLADORA', type: 'controle', degree: 3 }},
+  { data: { source: 'empresa-sub', target: 'contrato-004', label: 'EXECUTOU', type: 'execucao', degree: 3 }},
+  { data: { source: 'carlos-eng', target: 'empresa-xyz', label: 'SOCIO_DE\n50%', type: 'sociedade', degree: 3 }},
+  { data: { source: 'construtora-abc', target: 'processo-02', label: 'PARTE_EM\n(re)', type: 'judicial', degree: 3 }},
+];
+
+// ============================================================
+// CYTOSCAPE SETUP
+// ============================================================
+
+const colorMap = {
+  'mandatario': '#f0883e',
+  'mandatario-other': '#f0883e',
+  'pessoa': '#58a6ff',
+  'empresa': '#3fb950',
+  'partido': '#bc8cff',
+  'contrato': '#79c0ff',
+  'processo': '#da3633',
+  'projeto': '#8b949e',
+  'cluster-pessoa': '#58a6ff',
+  'cluster-bem': '#d29922',
+  'cluster-emenda': '#f778ba',
+  'cluster-votacao': '#8b949e',
+};
+
+const edgeColorMap = {
+  'filiacao': '#bc8cff',
+  'familiar': '#58a6ff',
+  'contratacao': '#58a6ff',
+  'patrimonio': '#d29922',
+  'emenda': '#f778ba',
+  'votacao': '#8b949e',
+  'doacao': '#3fb950',
+  'sociedade': '#3fb950',
+  'financiamento': '#f778ba',
+  'execucao': '#79c0ff',
+  'judicial': '#da3633',
+  'referencia': '#8b949e',
+  'controle': '#3fb950',
+};
+
+const cy = cytoscape({
+  container: document.getElementById('cy'),
+  elements: [...nodes, ...edges],
+
+  style: [
+    // Base node style
+    {
+      selector: 'node',
+      style: {
+        'label': 'data(label)',
+        'text-wrap': 'wrap',
+        'text-max-width': '120px',
+        'font-size': '10px',
+        'color': '#e1e4e8',
+        'text-valign': 'bottom',
+        'text-margin-y': 8,
+        'background-color': function(ele) { return colorMap[ele.data('type')] || '#8b949e'; },
+        'border-width': 2,
+        'border-color': function(ele) { return colorMap[ele.data('type')] || '#8b949e'; },
+        'width': 40,
+        'height': 40,
+        'opacity': 1,
+        'transition-property': 'opacity, width, height',
+        'transition-duration': '0.3s',
+      }
+    },
+    // Mandatario center node
+    {
+      selector: 'node[type="mandatario"]',
+      style: {
+        'width': 70,
+        'height': 70,
+        'font-size': '12px',
+        'font-weight': 'bold',
+        'border-width': 4,
+        'text-margin-y': 12,
+      }
+    },
+    // Other mandatario (degree 3)
+    {
+      selector: 'node[type="mandatario-other"]',
+      style: {
+        'width': 50,
+        'height': 50,
+        'font-size': '10px',
+        'border-style': 'dashed',
+      }
+    },
+    // Cluster nodes — distinct visual
+    {
+      selector: 'node[?isCluster]',
+      style: {
+        'shape': 'round-rectangle',
+        'width': 90,
+        'height': 50,
+        'border-style': 'dashed',
+        'border-width': 3,
+        'font-size': '10px',
+        'text-valign': 'center',
+        'text-halign': 'center',
+        'text-margin-y': 0,
+        'background-opacity': 0.3,
+      }
+    },
+    // Edges
+    {
+      selector: 'edge',
+      style: {
+        'label': 'data(label)',
+        'text-wrap': 'wrap',
+        'font-size': '8px',
+        'color': '#8b949e',
+        'text-rotation': 'autorotate',
+        'text-margin-y': -10,
+        'width': 2,
+        'line-color': function(ele) { return edgeColorMap[ele.data('type')] || '#30363d'; },
+        'target-arrow-color': function(ele) { return edgeColorMap[ele.data('type')] || '#30363d'; },
+        'target-arrow-shape': 'triangle',
+        'curve-style': 'bezier',
+        'opacity': 0.7,
+        'transition-property': 'opacity',
+        'transition-duration': '0.3s',
+      }
+    },
+    // Donation edges (reversed arrow — donor → politician)
+    {
+      selector: 'edge[type="doacao"]',
+      style: {
+        'width': 3,
+        'line-style': 'dashed',
+      }
+    },
+    // Hidden elements
+    {
+      selector: '.hidden',
+      style: {
+        'opacity': 0,
+        'pointer-events': 'none',
+      }
+    },
+    // Dimmed elements
+    {
+      selector: '.dimmed',
+      style: {
+        'opacity': 0.15,
+      }
+    },
+    // Highlighted path
+    {
+      selector: '.highlighted',
+      style: {
+        'opacity': 1,
+        'border-width': 4,
+        'border-color': '#f0883e',
+      }
+    },
+    {
+      selector: 'edge.highlighted',
+      style: {
+        'opacity': 1,
+        'width': 4,
+      }
+    },
+  ],
+
+  layout: { name: 'preset' }, // We'll position manually
+
+  // Interaction
+  minZoom: 0.3,
+  maxZoom: 3,
+  wheelSensitivity: 0.3,
+});
+
+// ============================================================
+// LAYOUT: Concentric rings by degree
+// ============================================================
+
+function layoutGraph() {
+  const center = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+  const radiusMap = { 0: 0, 1: 200, 2: 400, 3: 580 };
+
+  // Group nodes by degree
+  const byDegree = {};
+  cy.nodes().forEach(n => {
+    const d = n.data('degree');
+    if (!byDegree[d]) byDegree[d] = [];
+    byDegree[d].push(n);
+  });
+
+  // Position each degree in a ring
+  Object.entries(byDegree).forEach(([degree, nodes]) => {
+    const r = radiusMap[degree] || 400;
+    const count = nodes.length;
+    nodes.forEach((node, i) => {
+      const angle = (2 * Math.PI * i) / count - Math.PI / 2;
+      node.position({
+        x: center.x + r * Math.cos(angle),
+        y: center.y + r * Math.sin(angle),
+      });
+    });
+  });
+
+  cy.fit(undefined, 60);
+}
+
+layoutGraph();
+window.addEventListener('resize', layoutGraph);
+
+// ============================================================
+// DEGREE FILTERING
+// ============================================================
+
+let currentDegree = 1;
+
+function showDegree(maxDegree) {
+  currentDegree = maxDegree;
+
+  // Update buttons
+  document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+
+  // Update info
+  const info = document.getElementById('degree-info');
+  const labels = {
+    0: ['Todos os Graus', 'Rede completa ate 3o grau'],
+    1: ['1o Grau', 'Conexoes diretas do mandatario'],
+    2: ['2o Grau', 'Negocios e contratos do circulo proximo'],
+    3: ['3o Grau', 'Rede estendida — conexoes indiretas'],
+  };
+  info.querySelector('.degree-label').textContent = labels[maxDegree][0];
+  info.querySelector('.degree-desc').textContent = labels[maxDegree][1];
+
+  // Filter nodes and edges
+  cy.batch(() => {
+    if (maxDegree === 0) {
+      cy.elements().removeClass('hidden dimmed');
+    } else {
+      cy.nodes().forEach(n => {
+        const d = n.data('degree');
+        if (d <= maxDegree) {
+          n.removeClass('hidden dimmed');
+        } else {
+          n.addClass('hidden');
+        }
+      });
+      cy.edges().forEach(e => {
+        const d = e.data('degree');
+        if (d <= maxDegree) {
+          e.removeClass('hidden dimmed');
+        } else {
+          e.addClass('hidden');
+        }
+      });
+    }
+  });
+}
+
+// Start at degree 1
+showDegree(1);
+
+// ============================================================
+// TOOLTIP
+// ============================================================
+
+const tooltip = document.getElementById('tooltip');
+
+cy.on('mouseover', 'node', function(evt) {
+  const node = evt.target;
+  const detail = node.data('detail') || '';
+  const type = node.data('type') || '';
+  const label = node.data('label') || '';
+
+  tooltip.innerHTML = `
+    <div class="tt-title">${label.replace(/\n/g, ' ')}</div>
+    <div class="tt-detail">${detail.replace(/\n/g, '<br>')}</div>
+    ${node.data('isCluster') ? '<div style="color:#f0883e; margin-top:6px">Clique para expandir</div>' : ''}
+  `;
+  tooltip.style.display = 'block';
+});
+
+cy.on('mouseout', 'node', function() {
+  tooltip.style.display = 'none';
+});
+
+cy.on('mousemove', function(evt) {
+  tooltip.style.left = (evt.originalEvent.clientX + 16) + 'px';
+  tooltip.style.top = (evt.originalEvent.clientY + 16) + 'px';
+});
+
+// ============================================================
+// CLUSTER EXPAND (simplified demo)
+// ============================================================
+
+const expandedClusters = {};
+
+function expandCluster(clusterId) {
+  if (expandedClusters[clusterId]) {
+    // Collapse: remove expanded nodes
+    expandedClusters[clusterId].forEach(id => {
+      cy.remove(cy.getElementById(id));
+    });
+    delete expandedClusters[clusterId];
+    const clusterNode = cy.getElementById(clusterId);
+    if (clusterNode.length) clusterNode.style('border-color', colorMap[clusterNode.data('type')]);
+    return;
+  }
+
+  const clusterNode = cy.getElementById(clusterId);
+  if (!clusterNode.length) return;
+
+  const pos = clusterNode.position();
+  const expandedIds = [];
+
+  // Generate sample expanded nodes
+  const samples = {
+    'cluster-assessores': [
+      { label: 'Jose Santos\nR$15.800/mes', detail: 'Assessor Parlamentar\nCargo: Sec. Parlamentar\nGabinete: Sim' },
+      { label: 'Patricia Lima\nR$12.400/mes', detail: 'Assessora | Cargo: Assessora Legislativa\nGabinete: Sim' },
+      { label: 'Ricardo Souza\nR$18.200/mes', detail: 'Chefe de Gabinete\nMaior salario da equipe' },
+      { label: 'Lucia Ferreira\nR$9.800/mes', detail: 'Assessora de Comunicacao\nGabinete: Sim' },
+      { label: '... +21 outros', detail: '21 outros assessores\nSalario medio: R$14.200/mes' },
+    ],
+    'cluster-emendas': [
+      { label: 'Emenda #2024/001\nR$15M Saude', detail: 'Emenda Individual | Saude\nBeneficiario: Municipio de Campinas' },
+      { label: 'Emenda #2024/015\nR$8.5M Infra', detail: 'Emenda Individual | Infraestrutura\nBeneficiario: Estado SP' },
+      { label: 'Emenda #2023/042\nR$22M Educacao', detail: 'Emenda de Bancada | Educacao\nMaior emenda do mandato' },
+      { label: 'Emenda #2025/003\nR$12M Saude', detail: 'Emenda Individual | Saude\nBeneficiario: Municipio de Santos' },
+      { label: '... +83 outras', detail: '83 outras emendas\nValor medio: R$1.1M' },
+    ],
+    'cluster-votos': [
+      { label: 'PL 2345/2024\nReforma Tributaria\nVoto: SIM', detail: 'Votacao em plenario\nResultado: Aprovado 320x180' },
+      { label: 'PEC 45/2023\nTeto de Gastos\nVoto: NAO', detail: 'Votacao em plenario\nResultado: Rejeitado 200x310' },
+      { label: 'MPV 1234/2024\nSalario Minimo\nVoto: SIM', detail: 'Medida Provisoria\nResultado: Aprovado 400x50' },
+      { label: 'PL 789/2024\nMarco Regulatorio\nVoto: ABSTENCAO', detail: 'Votacao em plenario\nResultado: Aprovado 280x220' },
+      { label: '... +2.843 outros', detail: '2.843 outros votos\nSim: 67% | Nao: 24% | Outros: 9%' },
+    ],
+    'cluster-bens': [
+      { label: 'Apartamento SP\nR$1.800.000', detail: '2022 | Imovel urbano\nSao Paulo - SP\nDeclarado em 2018: R$1.200.000' },
+      { label: 'Casa Brasilia\nR$950.000', detail: '2022 | Imovel urbano\nBrasilia - DF' },
+      { label: 'Veiculo BMW X5\nR$380.000', detail: '2022 | Veiculo automotor\nAno 2022' },
+      { label: 'Aplicacoes\nR$1.200.000', detail: '2022 | Aplicacoes financeiras\nRendimento anual declarado' },
+      { label: '... +43 outros', detail: '43 outros bens\nInclui: terrenos, cotas, previdencia' },
+    ],
+  };
+
+  const sampleData = samples[clusterId] || [];
+  const typeMap = {
+    'cluster-assessores': 'pessoa',
+    'cluster-emendas': 'emenda-node',
+    'cluster-votos': 'votacao-node',
+    'cluster-bens': 'bem-node',
+  };
+  const nodeType = typeMap[clusterId] || 'pessoa';
+
+  sampleData.forEach((s, i) => {
+    const id = `${clusterId}-exp-${i}`;
+    expandedIds.push(id);
+    const angle = (2 * Math.PI * i) / sampleData.length - Math.PI / 2;
+    const r = 80;
+
+    cy.add({
+      group: 'nodes',
+      data: {
+        id,
+        label: s.label,
+        type: nodeType === 'pessoa' ? 'pessoa' : clusterId.replace('cluster-', 'cluster-').split('-')[1] === 'emendas' ? 'cluster-emenda' : clusterId.includes('votos') ? 'cluster-votacao' : 'cluster-bem',
+        degree: clusterNode.data('degree'),
+        detail: s.detail,
+      },
+      position: {
+        x: pos.x + r * Math.cos(angle),
+        y: pos.y + r * Math.sin(angle),
+      },
+    });
+
+    // Style expanded nodes
+    const addedNode = cy.getElementById(id);
+    addedNode.style({
+      'width': 30,
+      'height': 30,
+      'font-size': '8px',
+      'background-color': colorMap[nodeType] || '#8b949e',
+      'border-color': colorMap[nodeType] || '#8b949e',
+      'shape': s.label.startsWith('...') ? 'round-rectangle' : 'ellipse',
+      'background-opacity': s.label.startsWith('...') ? 0.3 : 1,
+      'border-style': s.label.startsWith('...') ? 'dashed' : 'solid',
+    });
+
+    // Edge from cluster to expanded node
+    const edgeId = `${id}-edge`;
+    expandedIds.push(edgeId);
+    cy.add({
+      group: 'edges',
+      data: {
+        id: edgeId,
+        source: clusterId,
+        target: id,
+        label: '',
+        type: 'expand',
+        degree: clusterNode.data('degree'),
+      },
+    });
+    cy.getElementById(edgeId).style({
+      'line-color': '#30363d',
+      'target-arrow-shape': 'none',
+      'width': 1,
+      'line-style': 'dotted',
+    });
+  });
+
+  expandedClusters[clusterId] = expandedIds;
+  clusterNode.style('border-color', '#f0883e');
+}
+
+// ============================================================
+// NODE CLICK: Highlight paths
+// ============================================================
+
+cy.on('tap', 'node', function(evt) {
+  const node = evt.target;
+
+  // If cluster, expand it
+  if (node.data('isCluster')) {
+    expandCluster(node.data('id'));
+    return;
+  }
+
+  // Highlight path to center
+  cy.elements().removeClass('highlighted dimmed');
+
+  // BFS from clicked node to center
+  const visited = new Set();
+  const queue = [node];
+  visited.add(node.id());
+  const pathElements = cy.collection().union(node);
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    const connected = current.connectedEdges().connectedNodes();
+    current.connectedEdges().forEach(e => {
+      const other = e.source().id() === current.id() ? e.target() : e.source();
+      if (!visited.has(other.id()) && other.data('degree') < current.data('degree')) {
+        visited.add(other.id());
+        pathElements.merge(e);
+        pathElements.merge(other);
+        queue.push(other);
+      }
+    });
+  }
+
+  // Dim everything, highlight path
+  cy.elements().addClass('dimmed');
+  pathElements.removeClass('dimmed').addClass('highlighted');
+});
+
+// Click background to reset
+cy.on('tap', function(evt) {
+  if (evt.target === cy) {
+    cy.elements().removeClass('highlighted dimmed');
+    // Re-apply degree filter
+    if (currentDegree > 0) {
+      cy.nodes().forEach(n => {
+        if (n.data('degree') > currentDegree) n.addClass('hidden');
+      });
+      cy.edges().forEach(e => {
+        if (e.data('degree') > currentDegree) e.addClass('hidden');
+      });
+    }
+  }
+});
+
+// Initial view: show degree 1
+showDegree(1);
+// Simulate click for initial state
+document.querySelector('.btn.active').click();
+</script>
+</body>
+</html>
