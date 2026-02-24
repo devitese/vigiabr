@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vigiabr://raw/querido_diario",
+  "title": "Querido Diario (OKBR) — Raw JSONL Format",
+  "oneOf": [
+    { "$ref": "#/$defs/nomeacao" },
+    { "$ref": "#/$defs/publicacao" }
+  ],
+  "$defs": {
+    "nomeacao": {
+      "type": "object",
+      "required": ["_type", "nome", "cargo", "data_publicacao"],
+      "properties": {
+        "_type": { "const": "nomeacao" },
+        "nome": { "type": "string" },
+        "cpf": { "type": "string" },
+        "cargo": { "type": "string" },
+        "tipo": { "type": "string", "enum": ["DAS", "Nomeacao", "Exoneracao", "Substituicao"] },
+        "orgao": { "type": "string" },
+        "data_publicacao": { "type": "string", "format": "date" },
+        "edicao_dou": { "type": "string" },
+        "secao_dou": { "type": "string" },
+        "url_fonte": { "type": "string", "format": "uri" }
+      }
+    },
+    "publicacao": {
+      "type": "object",
+      "required": ["_type", "data_publicacao", "texto"],
+      "properties": {
+        "_type": { "const": "publicacao" },
+        "data_publicacao": { "type": "string", "format": "date" },
+        "edicao_dou": { "type": "string" },
+        "secao_dou": { "type": "string" },
+        "texto": { "type": "string" },
+        "url_fonte": { "type": "string", "format": "uri" },
+        "entidades_mencionadas": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

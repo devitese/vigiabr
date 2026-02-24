@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vigiabr://raw/senado",
+  "title": "Senado Federal — Raw JSONL Format",
+  "oneOf": [
+    { "$ref": "#/$defs/senador" },
+    { "$ref": "#/$defs/votacao" },
+    { "$ref": "#/$defs/materia" },
+    { "$ref": "#/$defs/despesa" }
+  ],
+  "$defs": {
+    "senador": {
+      "type": "object",
+      "required": ["_type", "codigo", "nome", "sigla_partido", "sigla_uf"],
+      "properties": {
+        "_type": { "const": "senador" },
+        "codigo": { "type": "integer" },
+        "nome": { "type": "string" },
+        "nome_completo": { "type": "string" },
+        "sexo": { "type": "string", "enum": ["Masculino", "Feminino"] },
+        "sigla_partido": { "type": "string" },
+        "sigla_uf": { "type": "string" },
+        "url_foto": { "type": "string", "format": "uri" },
+        "email": { "type": "string" },
+        "mandato_inicio": { "type": "string", "format": "date" },
+        "mandato_fim": { "type": "string", "format": "date" }
+      }
+    },
+    "votacao": {
+      "type": "object",
+      "required": ["_type", "codigo_sessao", "data", "descricao"],
+      "properties": {
+        "_type": { "const": "votacao" },
+        "codigo_sessao": { "type": "string" },
+        "data": { "type": "string", "format": "date-time" },
+        "descricao": { "type": "string" },
+        "codigo_materia": { "type": "string" },
+        "resultado": { "type": "string" },
+        "votos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["codigo_senador", "voto"],
+            "properties": {
+              "codigo_senador": { "type": "integer" },
+              "voto": { "type": "string", "enum": ["Sim", "Não", "Abstenção", "Ausente", "P-NRV"] }
+            }
+          }
+        }
+      }
+    },
+    "materia": {
+      "type": "object",
+      "required": ["_type", "codigo", "tipo", "numero", "ano"],
+      "properties": {
+        "_type": { "const": "materia" },
+        "codigo": { "type": "string" },
+        "tipo": { "type": "string" },
+        "numero": { "type": "integer" },
+        "ano": { "type": "integer" },
+        "ementa": { "type": "string" },
+        "situacao": { "type": "string" },
+        "autor": { "type": "string" }
+      }
+    },
+    "despesa": {
+      "type": "object",
+      "required": ["_type", "codigo_senador", "ano", "mes", "tipo_despesa", "valor"],
+      "properties": {
+        "_type": { "const": "despesa" },
+        "codigo_senador": { "type": "integer" },
+        "ano": { "type": "integer" },
+        "mes": { "type": "integer" },
+        "tipo_despesa": { "type": "string" },
+        "valor": { "type": "number" },
+        "cnpj_cpf": { "type": "string" },
+        "fornecedor": { "type": "string" },
+        "documento": { "type": "string" }
+      }
+    }
+  }
+}

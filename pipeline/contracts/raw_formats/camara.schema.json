@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vigiabr://raw/camara",
+  "title": "Camara dos Deputados — Raw JSONL Format",
+  "description": "Each line in a .jsonl file from the Camara spider conforms to one of these record types.",
+  "oneOf": [
+    { "$ref": "#/$defs/deputado" },
+    { "$ref": "#/$defs/votacao" },
+    { "$ref": "#/$defs/despesa" },
+    { "$ref": "#/$defs/proposicao" },
+    { "$ref": "#/$defs/frente" }
+  ],
+  "$defs": {
+    "deputado": {
+      "type": "object",
+      "required": ["_type", "id", "nome", "sigla_partido", "sigla_uf"],
+      "properties": {
+        "_type": { "const": "deputado" },
+        "id": { "type": "integer" },
+        "nome": { "type": "string" },
+        "nome_civil": { "type": "string" },
+        "cpf": { "type": "string" },
+        "sigla_partido": { "type": "string" },
+        "sigla_uf": { "type": "string" },
+        "id_legislatura": { "type": "integer" },
+        "url_foto": { "type": "string", "format": "uri" },
+        "email": { "type": "string", "format": "email" },
+        "data_nascimento": { "type": "string", "format": "date" },
+        "sexo": { "type": "string", "enum": ["M", "F"] }
+      }
+    },
+    "votacao": {
+      "type": "object",
+      "required": ["_type", "id_votacao", "data", "descricao"],
+      "properties": {
+        "_type": { "const": "votacao" },
+        "id_votacao": { "type": "string" },
+        "data": { "type": "string", "format": "date-time" },
+        "descricao": { "type": "string" },
+        "id_proposicao": { "type": "integer" },
+        "votos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id_deputado", "voto"],
+            "properties": {
+              "id_deputado": { "type": "integer" },
+              "voto": { "type": "string", "enum": ["Sim", "Não", "Abstenção", "Ausente", "Obstrução"] }
+            }
+          }
+        }
+      }
+    },
+    "despesa": {
+      "type": "object",
+      "required": ["_type", "id_deputado", "ano", "mes", "tipo_despesa", "valor_liquido"],
+      "properties": {
+        "_type": { "const": "despesa" },
+        "id_deputado": { "type": "integer" },
+        "ano": { "type": "integer" },
+        "mes": { "type": "integer" },
+        "tipo_despesa": { "type": "string" },
+        "valor_documento": { "type": "number" },
+        "valor_liquido": { "type": "number" },
+        "valor_glosa": { "type": "number" },
+        "cnpj_cpf_fornecedor": { "type": "string" },
+        "nome_fornecedor": { "type": "string" },
+        "numero_documento": { "type": "string" },
+        "url_documento": { "type": "string", "format": "uri" }
+      }
+    },
+    "proposicao": {
+      "type": "object",
+      "required": ["_type", "id", "tipo", "numero", "ano"],
+      "properties": {
+        "_type": { "const": "proposicao" },
+        "id": { "type": "integer" },
+        "tipo": { "type": "string" },
+        "numero": { "type": "integer" },
+        "ano": { "type": "integer" },
+        "ementa": { "type": "string" },
+        "situacao": { "type": "string" },
+        "tema": { "type": "string" },
+        "id_autor": { "type": "integer" }
+      }
+    },
+    "frente": {
+      "type": "object",
+      "required": ["_type", "id", "titulo"],
+      "properties": {
+        "_type": { "const": "frente" },
+        "id": { "type": "integer" },
+        "titulo": { "type": "string" },
+        "id_legislatura": { "type": "integer" },
+        "membros": {
+          "type": "array",
+          "items": { "type": "integer" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+[project]
+name = "vigiabr-extraction"
+version = "0.1.0"
+description = "Scrapy spiders and bulk downloaders for VigiaBR pipeline"
+requires-python = ">=3.12"
+dependencies = [
+    "vigiabr-schemas",
+    "scrapy>=2.11",
+]
+
+[tool.uv.sources]
+vigiabr-schemas = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
