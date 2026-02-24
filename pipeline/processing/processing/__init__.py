@@ -1,1 +1,1 @@
-"""VigiaBR processing — transform, validate, and load (placeholder)."""
+"""VigiaBR processing — transform, validate, and load pipeline data."""

@@ -1,0 +1,54 @@
+# VigiaBR — Development overrides
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: vigiabr
+      POSTGRES_PASSWORD: vigiabr
+      POSTGRES_DB: vigiabr
+    # Create Airflow DB alongside main DB
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        docker-entrypoint.sh postgres &
+        until pg_isready -U vigiabr; do sleep 1; done
+        psql -U vigiabr -tc "SELECT 1 FROM pg_database WHERE datname = 'airflow'" | grep -q 1 || \
+          psql -U vigiabr -c "CREATE DATABASE airflow"
+        wait
+
+  neo4j:
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/vigiabr
+      NEO4J_server_memory_heap_initial__size: 256m
+      NEO4J_server_memory_heap_max__size: 512m
+
+  airflow-webserver:
+    ports:
+      - "8080:8080"
+    environment:
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+
+  airflow-scheduler:
+    volumes:
+      - ../airflow/dags:/opt/airflow/dags:ro
+      - ../../data:/opt/pipeline/data
+
+  prometheus:
+    ports:
+      - "9090:9090"
+
+  grafana:
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: vigiabr
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
