@@ -1,455 +1,455 @@
-# Contributing to VigiaBR
+# Contribuindo com o VigiaBR
 
-Thank you for your interest in VigiaBR! This project monitors the consistency of public records for Brazilian elected officials using exclusively official, public data. Every contribution strengthens democratic transparency.
+Obrigado pelo interesse no VigiaBR! Este projeto monitora a consistencia de registros publicos de agentes eleitos brasileiros usando exclusivamente dados oficiais e publicos. Cada contribuicao fortalece a transparencia democratica.
 
-**License**: VigiaBR is licensed under [AGPL-3.0](https://www.gnu.org/licenses/agpl-3.0.html). By contributing, you agree that your work will be distributed under this license.
+**Licenca**: O VigiaBR e licenciado sob [AGPL-3.0](https://www.gnu.org/licenses/agpl-3.0.html). Ao contribuir, voce concorda que seu trabalho sera distribuido sob esta licenca.
 
 ---
 
-## Table of Contents
+## Sumario
 
-- [Code of Conduct](#code-of-conduct)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Repository Setup](#repository-setup)
-  - [Infrastructure Services](#infrastructure-services)
-  - [Running Tests](#running-tests)
+- [Codigo de Conduta](#codigo-de-conduta)
+- [Primeiros Passos](#primeiros-passos)
+  - [Pre-requisitos](#pre-requisitos)
+  - [Configuracao do Repositorio](#configuracao-do-repositorio)
+  - [Servicos de Infraestrutura](#servicos-de-infraestrutura)
+  - [Executando Testes](#executando-testes)
   - [Linting](#linting)
-- [Project Structure](#project-structure)
-- [Git Workflow](#git-workflow)
-  - [Branch Strategy](#branch-strategy)
-  - [Issue-First Development](#issue-first-development)
-  - [Commit Messages](#commit-messages)
+- [Estrutura do Projeto](#estrutura-do-projeto)
+- [Fluxo Git](#fluxo-git)
+  - [Estrategia de Branches](#estrategia-de-branches)
+  - [Desenvolvimento Issue-First](#desenvolvimento-issue-first)
+  - [Mensagens de Commit](#mensagens-de-commit)
   - [Pull Requests](#pull-requests)
-- [Coding Standards](#coding-standards)
+- [Padroes de Codigo](#padroes-de-codigo)
   - [Python](#python)
-  - [Data Privacy (LGPD)](#data-privacy-lgpd)
-  - [Editorial Neutrality](#editorial-neutrality)
-- [Architecture Overview](#architecture-overview)
-  - [Data Pipeline](#data-pipeline)
-  - [Workspace Packages](#workspace-packages)
-  - [Database Schemas](#database-schemas)
-- [Adding a New Spider](#adding-a-new-spider)
-- [Adding a New Processing Stage](#adding-a-new-processing-stage)
-- [Database Migrations](#database-migrations)
-- [Reporting Bugs](#reporting-bugs)
-- [Suggesting Features](#suggesting-features)
-- [Security Vulnerabilities](#security-vulnerabilities)
+  - [Privacidade de Dados (LGPD)](#privacidade-de-dados-lgpd)
+  - [Neutralidade Editorial](#neutralidade-editorial)
+- [Visao Geral da Arquitetura](#visao-geral-da-arquitetura)
+  - [Pipeline de Dados](#pipeline-de-dados)
+  - [Pacotes do Workspace](#pacotes-do-workspace)
+  - [Schemas de Banco de Dados](#schemas-de-banco-de-dados)
+- [Adicionando um Novo Spider](#adicionando-um-novo-spider)
+- [Adicionando uma Nova Etapa de Processamento](#adicionando-uma-nova-etapa-de-processamento)
+- [Migracoes de Banco de Dados](#migracoes-de-banco-de-dados)
+- [Reportando Bugs](#reportando-bugs)
+- [Sugerindo Funcionalidades](#sugerindo-funcionalidades)
+- [Vulnerabilidades de Seguranca](#vulnerabilidades-de-seguranca)
 
 ---
 
-## Code of Conduct
+## Codigo de Conduta
 
-Be respectful, constructive, and inclusive. We follow the [Contributor Covenant v2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/). Harassment, discrimination, and bad-faith discourse will not be tolerated.
+Seja respeitoso, construtivo e inclusivo. Seguimos o [Contributor Covenant v2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/). Assedio, discriminacao e discursos de ma-fe nao serao tolerados.
 
 ---
 
-## Getting Started
+## Primeiros Passos
 
-### Prerequisites
+### Pre-requisitos
 
-| Tool | Version | Purpose |
-|------|---------|---------|
-| Python | >= 3.12 | Runtime for all pipeline code |
-| [uv](https://docs.astral.sh/uv/) | latest | Package and workspace manager |
-| Docker + Docker Compose | latest | PostgreSQL, Neo4j, Airflow, monitoring |
-| Git | >= 2.40 | Version control |
+| Ferramenta | Versao | Finalidade |
+|------------|--------|------------|
+| Python | >= 3.12 | Runtime para todo o codigo do pipeline |
+| [uv](https://docs.astral.sh/uv/) | latest | Gerenciador de pacotes e workspace |
+| Docker + Docker Compose | latest | PostgreSQL, Neo4j, Airflow, monitoramento |
+| Git | >= 2.40 | Controle de versao |
 
-### Repository Setup
+### Configuracao do Repositorio
 
 ```bash
-# Clone the repository
+# Clonar o repositorio
 git clone https://github.com/devitese/vigiabr.git
 cd vigiabr
 
-# Switch to the develop branch (all work starts here)
+# Mudar para a branch develop (todo trabalho comeca aqui)
 git checkout develop
 
-# Create the virtual environment and install all workspace packages
+# Criar o ambiente virtual e instalar todos os pacotes do workspace
 cd pipeline
 uv sync
 
-# Verify the installation
+# Verificar a instalacao
 uv run pytest
 ```
 
-The `uv sync` command installs all three workspace packages (`schemas`, `extraction`, `processing`) along with their development dependencies in a single virtual environment at `pipeline/.venv`.
+O comando `uv sync` instala os tres pacotes do workspace (`schemas`, `extraction`, `processing`) junto com suas dependencias de desenvolvimento em um unico ambiente virtual em `pipeline/.venv`.
 
-### Infrastructure Services
+### Servicos de Infraestrutura
 
-Start the local development stack:
+Inicie a stack de desenvolvimento local:
 
 ```bash
 cd pipeline/platform/docker
 
-# Start all services (PostgreSQL, Neo4j, Airflow, Prometheus, Grafana)
+# Iniciar todos os servicos (PostgreSQL, Neo4j, Airflow, Prometheus, Grafana)
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 ```
 
-Default development credentials (defined in `docker-compose.dev.yml`):
+Credenciais padrao de desenvolvimento (definidas em `docker-compose.dev.yml`):
 
-| Service | URL | User | Password |
-|---------|-----|------|----------|
+| Servico | URL | Usuario | Senha |
+|---------|-----|---------|-------|
 | PostgreSQL | `localhost:5432` | `vigiabr` | `vigiabr` |
 | Neo4j Browser | `http://localhost:7474` | `neo4j` | `vigiabr` |
 | Airflow | `http://localhost:8080` | `admin` | `admin` |
 | Grafana | `http://localhost:3000` | `admin` | `vigiabr` |
 | Prometheus | `http://localhost:9090` | — | — |
 
-To stop services:
+Para parar os servicos:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml down
 ```
 
-Add `-v` to also remove persistent volumes (database data).
+Adicione `-v` para tambem remover os volumes persistentes (dados dos bancos).
 
-### Running Tests
+### Executando Testes
 
 ```bash
 cd pipeline
 
-# Run all tests across all workspace packages
+# Executar todos os testes de todos os pacotes do workspace
 uv run pytest
 
-# Run tests for a specific package
+# Executar testes de um pacote especifico
 uv run pytest schemas/tests/
 uv run pytest extraction/tests/
 uv run pytest processing/tests/
 
-# Run a single test file
+# Executar um unico arquivo de teste
 uv run pytest extraction/tests/test_camara_deputados.py
 
-# Verbose output
+# Saida detalhada
 uv run pytest -v
 ```
 
 ### Linting
 
-We use [Ruff](https://docs.astral.sh/ruff/) for linting and formatting (target: Python 3.12, line length: 100).
+Usamos [Ruff](https://docs.astral.sh/ruff/) para linting e formatacao (target: Python 3.12, comprimento de linha: 100).
 
 ```bash
 cd pipeline
 
-# Check for lint errors
+# Verificar erros de lint
 uv run ruff check .
 
-# Auto-fix fixable issues
+# Corrigir automaticamente problemas corrigiveis
 uv run ruff check --fix .
 
-# Format code
+# Formatar codigo
 uv run ruff format .
 
-# Check formatting without modifying
+# Verificar formatacao sem modificar
 uv run ruff format --check .
 ```
 
 ---
 
-## Project Structure
+## Estrutura do Projeto
 
 ```
 vigiabr/
-├── CLAUDE.md                 # AI assistant configuration
-├── CONTRIBUTING.md            # This file
-├── VigiaBR-PRD-v1.0.html     # Product Requirements Document
+├── CLAUDE.md                 # Configuracao do assistente de IA
+├── CONTRIBUTING.md            # Este arquivo
+├── VigiaBR-PRD-v1.0.html     # Documento de Requisitos do Produto
 ├── docs/
-│   └── plans/                # Design & planning documents
+│   └── plans/                # Documentos de design e planejamento
 ├── pipeline/
-│   ├── pyproject.toml        # Root workspace definition (uv)
-│   ├── uv.lock               # Locked dependencies
-│   ├── schemas/              # Database schemas, Pydantic models, shared types
-│   │   ├── models/           # SQLAlchemy + Pydantic models
-│   │   ├── pii/              # SHA-256 hashing utilities for PII
-│   │   ├── alembic/          # PostgreSQL migrations
+│   ├── pyproject.toml        # Definicao raiz do workspace (uv)
+│   ├── uv.lock               # Dependencias travadas
+│   ├── schemas/              # Schemas de banco, modelos Pydantic, tipos compartilhados
+│   │   ├── models/           # Modelos SQLAlchemy + Pydantic
+│   │   ├── pii/              # Utilitarios de hash SHA-256 para PII
+│   │   ├── alembic/          # Migracoes PostgreSQL
 │   │   └── tests/
-│   ├── extraction/           # Scrapy spiders & bulk downloaders
-│   │   ├── vigiabr_spiders/  # Scrapy spider modules
-│   │   ├── bulk/             # Bulk file downloaders (e.g., CNPJ dump)
+│   ├── extraction/           # Spiders Scrapy e downloaders em massa
+│   │   ├── vigiabr_spiders/  # Modulos de spider Scrapy
+│   │   ├── bulk/             # Downloaders de arquivos em massa (ex: dump CNPJ)
 │   │   └── tests/
-│   ├── processing/           # Transform, validate, load stages
-│   │   ├── processing/       # Processing module source
+│   ├── processing/           # Etapas de transformacao, validacao e carga
+│   │   ├── processing/       # Codigo-fonte do modulo de processamento
 │   │   └── tests/
-│   ├── contracts/            # Data contracts (DDL, Cypher constraints, data flow docs)
-│   │   ├── pg_ddl.sql        # PostgreSQL DDL
+│   ├── contracts/            # Contratos de dados (DDL, constraints Cypher, docs de fluxo)
+│   │   ├── pg_ddl.sql        # DDL PostgreSQL
 │   │   ├── neo4j_constraints.cypher
 │   │   ├── data_flow.md
-│   │   └── raw_formats/      # Sample raw data format specifications
+│   │   └── raw_formats/      # Especificacoes de formato de dados brutos
 │   └── platform/
-│       └── docker/           # Docker Compose files & Dockerfiles
-└── data/                     # Local pipeline output (gitignored)
+│       └── docker/           # Arquivos Docker Compose e Dockerfiles
+└── data/                     # Saida local do pipeline (gitignored)
 ```
 
 ---
 
-## Git Workflow
+## Fluxo Git
 
-### Branch Strategy
+### Estrategia de Branches
 
 ```
-main (production — protected, deploy-only)
- └── develop (integration branch — all PRs target here)
+main (producao — protegida, apenas deploy)
+ └── develop (branch de integracao — todos os PRs apontam para ca)
       ├── feat/42-sci-endpoint
       ├── fix/51-spider-timeout
       └── docs/55-api-reference
 ```
 
-- **`main`**: Production branch. Only receives merge commits from `develop`. Never commit directly.
-- **`develop`**: Integration branch. All feature branches originate here, all PRs target here.
-- **Feature branches**: Named `type/issue-number-short-description`.
+- **`main`**: Branch de producao. Recebe apenas merge commits de `develop`. Nunca commite diretamente.
+- **`develop`**: Branch de integracao. Todas as branches de feature originam aqui, todos os PRs apontam para ca.
+- **Branches de feature**: Nomeadas como `tipo/numero-da-issue-descricao-curta`.
 
-### Issue-First Development
+### Desenvolvimento Issue-First
 
-**Always create a GitHub Issue before starting work.** This ensures:
+**Sempre crie uma Issue no GitHub antes de comecar o trabalho.** Isso garante:
 
-1. The work is tracked and discoverable.
-2. Others can see what you are working on.
-3. The branch and PR link back to a clear description.
+1. O trabalho e rastreavel e descobrivel.
+2. Outros podem ver no que voce esta trabalhando.
+3. A branch e o PR estao vinculados a uma descricao clara.
 
 ```bash
-# Example workflow
-# 1. Create an issue on GitHub (or via CLI)
-gh issue create --title "Add TSE wealth declaration spider" --body "..."
+# Exemplo de fluxo de trabalho
+# 1. Criar uma issue no GitHub (ou via CLI)
+gh issue create --title "Adicionar spider de declaracao de bens do TSE" --body "..."
 
-# 2. Note the issue number (e.g., #42)
+# 2. Anotar o numero da issue (ex: #42)
 
-# 3. Create your branch from develop
+# 3. Criar sua branch a partir de develop
 git checkout develop
 git pull origin develop
 git checkout -b feat/42-tse-wealth-spider
 ```
 
-### Commit Messages
+### Mensagens de Commit
 
-We use [Conventional Commits](https://www.conventionalcommits.org/):
+Usamos [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
-type(scope): short description
+tipo(escopo): descricao curta
 
-Optional body explaining the "why" behind the change.
+Corpo opcional explicando o "por que" por tras da mudanca.
 
 Refs #42
 ```
 
-**Types**: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `chore`, `ci`, `build`, `revert`
+**Tipos**: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `chore`, `ci`, `build`, `revert`
 
-**Scopes** (examples): `extraction`, `processing`, `schemas`, `docker`, `ci`
+**Escopos** (exemplos): `extraction`, `processing`, `schemas`, `docker`, `ci`
 
-Examples:
+Exemplos:
 
 ```
-feat(extraction): add TSE wealth declaration spider
+feat(extraction): adicionar spider de declaracao de bens do TSE
 
-Scrapes dadosabertos.tse.jus.br for yearly asset declarations.
-Outputs raw JSON to pipeline/data/tse_bens/.
+Coleta dados de dadosabertos.tse.jus.br para declaracoes anuais de bens.
+Grava JSON bruto em pipeline/data/tse_bens/.
 
 Refs #42
 ```
 
 ```
-fix(processing): handle null CNPJ in company loader
+fix(processing): tratar CNPJ nulo no loader de empresas
 
-The Receita Federal dump occasionally has blank CNPJ fields
-for companies under judicial protection. Skip these rows
-instead of raising a validation error.
+O dump da Receita Federal ocasionalmente tem campos CNPJ em branco
+para empresas sob protecao judicial. Pular essas linhas
+em vez de levantar um erro de validacao.
 
 Fixes #51
 ```
 
 ### Pull Requests
 
-1. **One PR per workstream** — do not mix unrelated changes.
-2. **Target `develop`** — never open a PR against `main`.
-3. **Squash merge** — PRs are squash-merged into `develop`.
-4. **Run tests before pushing** — `uv run pytest` must pass.
-5. **Run linter before pushing** — `uv run ruff check .` must be clean.
+1. **Um PR por workstream** — nao misture alteracoes nao relacionadas.
+2. **Aponte para `develop`** — nunca abra um PR contra `main`.
+3. **Squash merge** — PRs sao squash-merged em `develop`.
+4. **Execute os testes antes do push** — `uv run pytest` deve passar.
+5. **Execute o linter antes do push** — `uv run ruff check .` deve estar limpo.
 
-PR description template:
+Template de descricao do PR:
 
 ```markdown
-## Summary
-- Brief description of what changed and why
+## Resumo
+- Breve descricao do que mudou e por que
 
-## Related Issue
-Closes #<issue-number>
+## Issue Relacionada
+Closes #<numero-da-issue>
 
-## Test Plan
-- [ ] New/updated tests pass (`uv run pytest`)
-- [ ] Linting passes (`uv run ruff check .`)
-- [ ] Manual verification steps (if applicable)
+## Plano de Testes
+- [ ] Testes novos/atualizados passam (`uv run pytest`)
+- [ ] Linting passa (`uv run ruff check .`)
+- [ ] Etapas de verificacao manual (se aplicavel)
 
 ## Screenshots / Logs
-(if applicable)
+(se aplicavel)
 ```
 
 ---
 
-## Coding Standards
+## Padroes de Codigo
 
 ### Python
 
-- **Target version**: Python 3.12+
-- **Line length**: 100 characters
-- **Linter/Formatter**: Ruff (configured in each package's `pyproject.toml`)
-- **Type hints**: Use type annotations for function signatures. Pydantic models enforce runtime validation.
-- **Imports**: Ruff handles import sorting. Let it do its job.
-- **Build system**: Hatchling for all packages.
-- **Dependencies**: Managed via `uv`. Add runtime dependencies to the relevant package's `pyproject.toml` under `[project.dependencies]`. Add dev-only tools to `[dependency-groups.dev]`.
+- **Versao alvo**: Python 3.12+
+- **Comprimento de linha**: 100 caracteres
+- **Linter/Formatador**: Ruff (configurado no `pyproject.toml` de cada pacote)
+- **Type hints**: Use anotacoes de tipo para assinaturas de funcao. Modelos Pydantic aplicam validacao em runtime.
+- **Imports**: Ruff cuida da ordenacao de imports. Deixe ele fazer o trabalho.
+- **Build system**: Hatchling para todos os pacotes.
+- **Dependencias**: Gerenciadas via `uv`. Adicione dependencias de runtime no `pyproject.toml` do pacote relevante em `[project.dependencies]`. Adicione ferramentas apenas de desenvolvimento em `[dependency-groups.dev]`.
 
-### Data Privacy (LGPD)
+### Privacidade de Dados (LGPD)
 
-VigiaBR complies with Brazil's Lei Geral de Protecao de Dados (LGPD). **This is non-negotiable:**
+O VigiaBR esta em conformidade com a Lei Geral de Protecao de Dados (LGPD). **Isso e inegociavel:**
 
-- **CPF numbers must be SHA-256 hashed** before storage. Use the `pii` module in `pipeline/schemas/` for all hashing.
-- **Never store reversible personal identifiers** in any database, log, or output file.
-- **Never log PII** — not in Scrapy logs, not in Airflow task logs, not in error messages.
-- If you need to debug with real data, hash it first or use synthetic test data.
+- **Numeros de CPF devem ser hasheados com SHA-256** antes do armazenamento. Use o modulo `pii` em `pipeline/schemas/` para todo hashing.
+- **Nunca armazene identificadores pessoais reversiveis** em qualquer banco de dados, log ou arquivo de saida.
+- **Nunca registre PII em logs** — nem em logs do Scrapy, nem em logs de tasks do Airflow, nem em mensagens de erro.
+- Se precisar debugar com dados reais, hasheie primeiro ou use dados sinteticos de teste.
 
-### Editorial Neutrality
+### Neutralidade Editorial
 
-VigiaBR presents facts, never accusations. All user-facing text must follow these rules:
+O VigiaBR apresenta fatos, nunca acusacoes. Todo texto voltado ao usuario deve seguir estas regras:
 
-- Use **FATO** (fact), **METRICA** (metric), and **FONTE** (source) framing.
-- Always include a direct link to the official data source.
-- Never use language that implies guilt, wrongdoing, or intent.
-- Never editorialize. If a metric looks suspicious, present the numbers and let readers draw conclusions.
-
----
-
-## Architecture Overview
-
-### Data Pipeline
-
-```
-Scrapy Spiders → Raw JSON/CSV → Airflow DAGs → Transform → Validate → Load
-                                                              ↓           ↓
-                                                         PostgreSQL    Neo4j
-                                                         (tabular)    (graph)
-```
-
-1. **Extraction** (`pipeline/extraction/`): Scrapy spiders fetch data from official APIs and portals. Bulk downloaders handle large datasets (e.g., Receita Federal CNPJ dump).
-2. **Processing** (`pipeline/processing/`): Transforms raw data into validated Pydantic models, then loads into PostgreSQL (tabular data) and Neo4j (graph relationships).
-3. **Schemas** (`pipeline/schemas/`): Shared SQLAlchemy models, Pydantic types, PII hashing utilities, and Alembic migrations.
-
-### Workspace Packages
-
-The `pipeline/` directory is a [uv workspace](https://docs.astral.sh/uv/concepts/workspaces/) with three member packages:
-
-| Package | PyPI Name | Description |
-|---------|-----------|-------------|
-| `schemas/` | `vigiabr-schemas` | SQLAlchemy models, Pydantic types, Alembic migrations, PII hashing |
-| `extraction/` | `vigiabr-extraction` | Scrapy spiders, bulk downloaders |
-| `processing/` | `vigiabr-processing` | Transform, validate, load stages |
-
-Both `extraction` and `processing` depend on `schemas` as a workspace dependency.
-
-### Database Schemas
-
-- **PostgreSQL DDL**: `pipeline/contracts/pg_ddl.sql`
-- **Neo4j Constraints**: `pipeline/contracts/neo4j_constraints.cypher`
-- **Data flow documentation**: `pipeline/contracts/data_flow.md`
-- **Alembic migrations**: `pipeline/schemas/alembic/`
+- Use o enquadramento **FATO** (fato), **METRICA** (metrica) e **FONTE** (fonte).
+- Sempre inclua um link direto para a fonte oficial dos dados.
+- Nunca use linguagem que implique culpa, irregularidade ou intencao.
+- Nunca editorialize. Se uma metrica parece suspeita, apresente os numeros e deixe os leitores tirarem suas conclusoes.
 
 ---
 
-## Adding a New Spider
+## Visao Geral da Arquitetura
 
-1. **Create an issue** describing the data source, endpoints, and expected output format.
-2. Check `pipeline/contracts/raw_formats/` for existing format specs. Add one if this is a new data source.
-3. Create the spider in `pipeline/extraction/vigiabr_spiders/`:
+### Pipeline de Dados
+
+```
+Spiders Scrapy → JSON/CSV bruto → DAGs Airflow → Transformar → Validar → Carregar
+                                                                   ↓           ↓
+                                                              PostgreSQL    Neo4j
+                                                              (tabular)    (grafo)
+```
+
+1. **Extracao** (`pipeline/extraction/`): Spiders Scrapy coletam dados de APIs e portais oficiais. Downloaders em massa tratam datasets grandes (ex: dump CNPJ da Receita Federal).
+2. **Processamento** (`pipeline/processing/`): Transforma dados brutos em modelos Pydantic validados, depois carrega no PostgreSQL (dados tabulares) e Neo4j (relacionamentos em grafo).
+3. **Schemas** (`pipeline/schemas/`): Modelos SQLAlchemy compartilhados, tipos Pydantic, utilitarios de hash de PII e migracoes Alembic.
+
+### Pacotes do Workspace
+
+O diretorio `pipeline/` e um [workspace uv](https://docs.astral.sh/uv/concepts/workspaces/) com tres pacotes membros:
+
+| Pacote | Nome PyPI | Descricao |
+|--------|-----------|-----------|
+| `schemas/` | `vigiabr-schemas` | Modelos SQLAlchemy, tipos Pydantic, migracoes Alembic, hash de PII |
+| `extraction/` | `vigiabr-extraction` | Spiders Scrapy, downloaders em massa |
+| `processing/` | `vigiabr-processing` | Etapas de transformacao, validacao e carga |
+
+Tanto `extraction` quanto `processing` dependem de `schemas` como dependencia do workspace.
+
+### Schemas de Banco de Dados
+
+- **DDL PostgreSQL**: `pipeline/contracts/pg_ddl.sql`
+- **Constraints Neo4j**: `pipeline/contracts/neo4j_constraints.cypher`
+- **Documentacao de fluxo de dados**: `pipeline/contracts/data_flow.md`
+- **Migracoes Alembic**: `pipeline/schemas/alembic/`
+
+---
+
+## Adicionando um Novo Spider
+
+1. **Crie uma issue** descrevendo a fonte de dados, endpoints e formato de saida esperado.
+2. Verifique `pipeline/contracts/raw_formats/` para especificacoes de formato existentes. Adicione uma se for uma nova fonte de dados.
+3. Crie o spider em `pipeline/extraction/vigiabr_spiders/`:
 
 ```python
-# pipeline/extraction/vigiabr_spiders/my_source.py
+# pipeline/extraction/vigiabr_spiders/minha_fonte.py
 import scrapy
-from models.raw import MyRawModel  # Pydantic model from schemas
+from models.raw import MeuModeloBruto  # Modelo Pydantic do schemas
 
 
-class MySourceSpider(scrapy.Spider):
-    name = "my_source"
+class MinhaFonteSpider(scrapy.Spider):
+    name = "minha_fonte"
     custom_settings = {
         "DEFAULT_REQUEST_HEADERS": {"Accept": "application/json"},
     }
 
     def start_requests(self):
-        yield scrapy.Request("https://api.official-source.gov.br/endpoint")
+        yield scrapy.Request("https://api.fonte-oficial.gov.br/endpoint")
 
     def parse(self, response):
         data = response.json()
         for item in data["results"]:
-            yield MyRawModel(**item).model_dump()
+            yield MeuModeloBruto(**item).model_dump()
 ```
 
-4. Add tests in `pipeline/extraction/tests/`.
-5. Run `uv run pytest extraction/tests/` and `uv run ruff check extraction/`.
+4. Adicione testes em `pipeline/extraction/tests/`.
+5. Execute `uv run pytest extraction/tests/` e `uv run ruff check extraction/`.
 
 ---
 
-## Adding a New Processing Stage
+## Adicionando uma Nova Etapa de Processamento
 
-1. Define or update the Pydantic model in `pipeline/schemas/models/`.
-2. If the stage writes to PostgreSQL, add or update the SQLAlchemy model and create an Alembic migration.
-3. Implement the transform/load logic in `pipeline/processing/processing/`.
-4. Add tests in `pipeline/processing/tests/`.
-5. Document the data flow in `pipeline/contracts/data_flow.md` if adding a new pipeline path.
+1. Defina ou atualize o modelo Pydantic em `pipeline/schemas/models/`.
+2. Se a etapa escreve no PostgreSQL, adicione ou atualize o modelo SQLAlchemy e crie uma migracao Alembic.
+3. Implemente a logica de transformacao/carga em `pipeline/processing/processing/`.
+4. Adicione testes em `pipeline/processing/tests/`.
+5. Documente o fluxo de dados em `pipeline/contracts/data_flow.md` se estiver adicionando um novo caminho no pipeline.
 
 ---
 
-## Database Migrations
+## Migracoes de Banco de Dados
 
-We use [Alembic](https://alembic.sqlalchemy.org/) for PostgreSQL schema migrations:
+Usamos [Alembic](https://alembic.sqlalchemy.org/) para migracoes de schema do PostgreSQL:
 
 ```bash
 cd pipeline/schemas
 
-# Generate a new migration after modifying SQLAlchemy models
+# Gerar uma nova migracao apos modificar modelos SQLAlchemy
 uv run alembic -c alembic/alembic.ini revision --autogenerate -m "add wealth_declarations table"
 
-# Apply migrations
+# Aplicar migracoes
 uv run alembic -c alembic/alembic.ini upgrade head
 
-# Rollback one migration
+# Reverter uma migracao
 uv run alembic -c alembic/alembic.ini downgrade -1
 ```
 
-For Neo4j constraint changes, update `pipeline/contracts/neo4j_constraints.cypher` and note the changes in your PR.
+Para alteracoes em constraints do Neo4j, atualize `pipeline/contracts/neo4j_constraints.cypher` e anote as mudancas no seu PR.
 
 ---
 
-## Reporting Bugs
+## Reportando Bugs
 
-[Open an issue](https://github.com/devitese/vigiabr/issues/new) with:
+[Abra uma issue](https://github.com/devitese/vigiabr/issues/new) com:
 
-- **Title**: Clear, concise description of the problem.
-- **Steps to reproduce**: Exact commands, input data, or URLs.
-- **Expected behavior**: What should happen.
-- **Actual behavior**: What actually happens (include logs/tracebacks).
-- **Environment**: OS, Python version, Docker version, relevant service versions.
-
----
-
-## Suggesting Features
-
-Open an issue with the `enhancement` label. Include:
-
-- **Problem statement**: What user need or gap does this address?
-- **Proposed solution**: How you envision it working.
-- **Data source**: If it involves new data, link to the official API/portal.
-- **Alternatives considered**: Other approaches you thought about.
-
-For larger features, consider writing a design document in `docs/plans/` as part of your proposal.
+- **Titulo**: Descricao clara e concisa do problema.
+- **Passos para reproduzir**: Comandos exatos, dados de entrada ou URLs.
+- **Comportamento esperado**: O que deveria acontecer.
+- **Comportamento real**: O que realmente acontece (inclua logs/tracebacks).
+- **Ambiente**: SO, versao do Python, versao do Docker, versoes relevantes dos servicos.
 
 ---
 
-## Security Vulnerabilities
+## Sugerindo Funcionalidades
 
-**Do not open a public issue for security vulnerabilities.** Instead, email the maintainers directly. Include:
+Abra uma issue com a label `enhancement`. Inclua:
 
-- Description of the vulnerability.
-- Steps to reproduce.
-- Potential impact.
+- **Declaracao do problema**: Qual necessidade do usuario ou lacuna isso endereca?
+- **Solucao proposta**: Como voce imagina o funcionamento.
+- **Fonte de dados**: Se envolve novos dados, link para a API/portal oficial.
+- **Alternativas consideradas**: Outras abordagens que voce considerou.
 
-We will respond within 48 hours and coordinate a fix before public disclosure.
+Para funcionalidades maiores, considere escrever um documento de design em `docs/plans/` como parte da sua proposta.
 
 ---
 
-Thank you for contributing to democratic transparency in Brazil.
+## Vulnerabilidades de Seguranca
+
+**Nao abra uma issue publica para vulnerabilidades de seguranca.** Em vez disso, envie um email diretamente aos mantenedores. Inclua:
+
+- Descricao da vulnerabilidade.
+- Passos para reproduzir.
+- Impacto potencial.
+
+Responderemos em ate 48 horas e coordenaremos uma correcao antes da divulgacao publica.
+
+---
+
+Obrigado por contribuir com a transparencia democratica no Brasil.
