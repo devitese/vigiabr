@@ -168,7 +168,11 @@ class BaseTransformer(ABC):
                 if not line:
                     continue
                 try:
-                    yield json.loads(line)
+                    record = json.loads(line)
+                    # Scrapy spiders output "_type"; normalise to "type" for transformers
+                    if "_type" in record and "type" not in record:
+                        record["type"] = record.pop("_type")
+                    yield record
                 except json.JSONDecodeError as exc:
                     logger.warning(
                         "%s:%d — invalid JSON, skipping: %s", path.name, lineno, exc

@@ -33,7 +33,7 @@ class SenadoSenadorRaw(BaseModel):
 
 class SenadoVotoRaw(BaseModel):
     codigo_senador: int
-    voto: Literal["Sim", "Não", "Abstenção", "Ausente", "P-NRV"]
+    voto: Literal["Sim", "Não", "Abstenção", "Ausente", "P-NRV", "Votou"]
 
 
 class SenadoVotacaoRaw(BaseModel):

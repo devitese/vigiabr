@@ -7,7 +7,7 @@ from datetime import date
 from typing import Optional
 
 from pydantic import Field
-from sqlalchemy import ARRAY, CheckConstraint, Date, ForeignKey, Integer, String, Text
+from sqlalchemy import ARRAY, CheckConstraint, Date, ForeignKey, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -22,7 +22,7 @@ class Inconsistencia(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     metrica: Mapped[Optional[str]] = mapped_column(String(255))
     score_impacto: Mapped[int] = mapped_column(Integer, nullable=False)
     fontes: Mapped[list[str]] = mapped_column(ARRAY(String), server_default="{}", nullable=False)
-    data_deteccao: Mapped[date] = mapped_column(Date, server_default="CURRENT_DATE", nullable=False)
+    data_deteccao: Mapped[date] = mapped_column(Date, server_default=text("CURRENT_DATE"), nullable=False)
     mandatario_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("mandatarios.id")
     )
