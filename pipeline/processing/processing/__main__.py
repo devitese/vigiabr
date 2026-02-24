@@ -38,7 +38,7 @@ _PG_CONFLICT_KEYS: dict[str, list[str]] = {
     "projetos_lei": ["tipo", "numero", "ano"],
     "emendas": ["numero"],
     "contratos_gov": ["numero"],
-    "bens_patrimoniais": ["mandatario_id", "tipo", "ano_eleicao"],
+    "bens_patrimoniais": ["mandatario_id_externo", "tipo", "ano_eleicao"],
     "processos_judiciais": ["numero_cnj"],
     "inconsistencias": ["tipo", "mandatario_id", "metrica"],
 }
