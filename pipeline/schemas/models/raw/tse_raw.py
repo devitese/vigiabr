@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 __all__ = [
     "TseCandidatoRaw",
@@ -50,6 +50,24 @@ class TseDoacaoRaw(BaseModel):
     data_receita: Optional[date] = None
     descricao: Optional[str] = None
 
+    @field_validator("data_receita", mode="before")
+    @classmethod
+    def _parse_br_date(cls, v: object) -> date | None:
+        """Accept DD/MM/YYYY in addition to ISO format."""
+        if v is None or v == "":
+            return None
+        if isinstance(v, date):
+            return v
+        if isinstance(v, str):
+            if "/" in v:
+                try:
+                    return datetime.strptime(v, "%d/%m/%Y").date()
+                except ValueError:
+                    return None
+            if v.startswith("#"):
+                return None
+        return v
+
 
 class TseDespesaCampanhaRaw(BaseModel):
     type: Literal["despesa_campanha"] = "despesa_campanha"
@@ -61,3 +79,21 @@ class TseDespesaCampanhaRaw(BaseModel):
     cnpj_cpf_fornecedor: Optional[str] = None
     data_despesa: Optional[date] = None
     descricao: Optional[str] = None
+
+    @field_validator("data_despesa", mode="before")
+    @classmethod
+    def _parse_br_date(cls, v: object) -> date | None:
+        """Accept DD/MM/YYYY in addition to ISO format."""
+        if v is None or v == "":
+            return None
+        if isinstance(v, date):
+            return v
+        if isinstance(v, str):
+            if "/" in v:
+                try:
+                    return datetime.strptime(v, "%d/%m/%Y").date()
+                except ValueError:
+                    return None
+            if v.startswith("#"):
+                return None
+        return v

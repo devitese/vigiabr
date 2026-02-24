@@ -227,10 +227,14 @@ _NEO4J_NODE_MAP: dict[str, tuple[str, str]] = {
 }
 
 # Neo4j relationship mapping: rel_name -> (rel_type, from_label, to_label, from_key, to_key, from_field, to_field)
-_NEO4J_REL_MAP: dict[str, tuple[str, str, str, str, str, str, str]] = {
-    "mandatario_votos": ("VOTOU", "Mandatario", "Votacao", "id_tse", "id_externo",
-                         "mandatario_id_externo", "votacao_id_externo"),
+_VOTO_REL_TYPE: dict[str, str] = {
+    "Sim": "VOTOU_SIM",
+    "Não": "VOTOU_NAO",
+    "Abstenção": "VOTOU_ABSTENCAO",
+    "Ausente": "VOTOU_AUSENTE",
+    "Obstrução": "VOTOU_OBSTRUCAO",
 }
+_VOTO_REL_DEFAULT = "VOTOU"
 
 
 def _load_neo4j(
@@ -257,26 +261,26 @@ def _load_neo4j(
         # 2. Derive FILIADO_A from mandatario partido_sigla
         _load_filiacao_neo4j(result, neo4j)
 
-        # 3. Merge VOTOU via _NEO4J_REL_MAP
-        for rel_name, records in result.relationships.items():
-            if not records:
-                continue
-            mapping = _NEO4J_REL_MAP.get(rel_name)
-            if not mapping:
-                continue
-            rel_type, from_label, to_label, from_key, to_key, from_field, to_field = mapping
-            rel_records = []
-            for r in records:
+        # 3. Merge VOTOU_SIM / VOTOU_NAO / VOTOU_ABSTENCAO by vote type
+        voto_records = result.relationships.get("mandatario_votos", [])
+        if voto_records:
+            # Group by vote type
+            by_type: dict[str, list[dict]] = {}
+            for r in voto_records:
                 d = _to_neo4j_dict(r)
-                rel_records.append({
-                    "from_id": d.get(from_field),
-                    "to_id": d.get(to_field),
+                voto_val = d.get("voto", "")
+                rel_type = _VOTO_REL_TYPE.get(voto_val, _VOTO_REL_DEFAULT)
+                by_type.setdefault(rel_type, []).append({
+                    "from_id": d.get("mandatario_id_externo"),
+                    "to_id": d.get("votacao_id_externo"),
                     "props": {k: v for k, v in d.items()
-                              if k not in (from_field, to_field) and v is not None},
+                              if k not in ("mandatario_id_externo", "votacao_id_externo", "voto")
+                              and v is not None},
                 })
-            neo4j.merge_relationships(
-                rel_type, from_label, to_label, from_key, to_key, rel_records,
-            )
+            for rel_type, recs in by_type.items():
+                neo4j.merge_relationships(
+                    rel_type, "Mandatario", "Votacao", "id_tse", "id_externo", recs,
+                )
 
         # 4. Custom relationship loaders
         _load_doacoes_neo4j(result, neo4j)
