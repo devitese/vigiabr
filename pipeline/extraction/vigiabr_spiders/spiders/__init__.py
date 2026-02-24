@@ -1,0 +1,1 @@
+"""VigiaBR Scrapy spiders."""

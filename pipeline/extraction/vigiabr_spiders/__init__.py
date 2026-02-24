@@ -1,1 +1,1 @@
-"""VigiaBR extraction — Scrapy spiders and bulk downloaders (placeholder)."""
+"""VigiaBR extraction — Scrapy spiders and bulk downloaders."""
