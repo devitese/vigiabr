@@ -33,12 +33,12 @@ vigiabr/
 │   ├── dimensions/
 │   │   ├── __init__.py
 │   │   ├── base.py               # Abstract base class for dimensions
-│   │   ├── patrimonio.py         # Wealth evolution vs salary (25%)
-│   │   ├── voto_doador.py        # Vote × donor sector correlation (20%)
-│   │   ├── contrato_familiar.py  # Family company contracts (20%)
-│   │   ├── emenda_vinculo.py     # Amendment beneficiary linkage (15%)
-│   │   ├── gabinete_familiar.py  # Family office hiring (12%)
-│   │   └── voto_pos_doacao.py    # Vote change after donation (8%)
+│   │   ├── patrimonio.py         # Wealth evolution vs salary
+│   │   ├── voto_doador.py        # Vote × donor sector correlation
+│   │   ├── contrato_familiar.py  # Family company contracts
+│   │   ├── emenda_vinculo.py     # Amendment beneficiary linkage
+│   │   ├── gabinete_familiar.py  # Family office hiring
+│   │   └── voto_pos_doacao.py    # Vote change after donation
 │   ├── engine.py                 # SCIEngine — orchestrates all dimensions
 │   ├── detector.py               # InconsistencyDetector — creates :Inconsistencia nodes
 │   ├── history.py                # ScoreHistory — tracks score changes over time
@@ -251,19 +251,19 @@ vigiabr-scoring = { path = "../scoring", editable = true }
 **Key concerns:**
 - All scores must be deterministic and reproducible (same input → same output)
 - Every deduction must produce an `:Inconsistencia` with clear FATO + MÉTRICA + FONTE
-- Fixed weights for MVP (no ML yet — that's Phase 2)
+- Weights TBD — under statistical analysis (no ML yet — that's Phase 2)
 - Score = 1000 − sum(deductions), clamped to [0, 1000]
 
-**SCI Dimensions (fixed weights):**
+**SCI Dimensions (weights under statistical analysis):**
 
-| Dimension | Class | Weight | Max Deduction | Data Sources |
-|-----------|-------|--------|---------------|-------------|
-| Patrimônio vs renda | `patrimonio.py` | 25% | −250 pts | TSE bens + Portal Transparência salários |
-| Voto × setor doador | `voto_doador.py` | 20% | −200 pts | Câmara votos + TSE doações |
-| Contrato familiar | `contrato_familiar.py` | 20% | −200 pts | Receita CNPJ + Transparência contratos |
-| Emenda × vínculo | `emenda_vinculo.py` | 15% | −150 pts | Transparência emendas + CNPJ |
-| Gabinete familiar | `gabinete_familiar.py` | 12% | −120 pts | Câmara/Senado contratações + CPF hash |
-| Voto pós-doação | `voto_pos_doacao.py` | 8% | −80 pts | Câmara votos + TSE doações (temporal) |
+| Dimension | Class | Data Sources |
+|-----------|-------|-------------|
+| Patrimônio vs renda | `patrimonio.py` | TSE bens + Portal Transparência salários |
+| Voto × setor doador | `voto_doador.py` | Câmara votos + TSE doações |
+| Contrato familiar | `contrato_familiar.py` | Receita CNPJ + Transparência contratos |
+| Emenda × vínculo | `emenda_vinculo.py` | Transparência emendas + CNPJ |
+| Gabinete familiar | `gabinete_familiar.py` | Câmara/Senado contratações + CPF hash |
+| Voto pós-doação | `voto_pos_doacao.py` | Câmara votos + TSE doações (temporal) |
 
 Smallest front. ~15-20 files. Merges to `develop` first.
 

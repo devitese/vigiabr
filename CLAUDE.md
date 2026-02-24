@@ -108,14 +108,16 @@ Key node types: `:Mandatario` (politician), `:Partido`, `:Empresa`, `:BemPatrimo
 Key relationships: `FILIADO_A`, `VOTOU`, `TEM_FAMILIAR`, `CONTRATOU`, `SOCIO_DE`, `RECEBEU_DOACAO`
 
 ### SCI Scoring Dimensions
-| Dimension | Weight |
-|-----------|--------|
-| Wealth evolution vs salary | 25% |
-| Vote correlation with donor sector | 20% |
-| Familiar company contracts | 20% |
-| Amendment beneficiary linkage | 15% |
-| Family office hiring | 12% |
-| Vote change after donation | 8% |
+Weights are being determined by statistical analysis and are not yet final.
+
+| Dimension |
+|-----------|
+| Wealth evolution vs salary |
+| Vote correlation with donor sector |
+| Familiar company contracts |
+| Amendment beneficiary linkage |
+| Family office hiring |
+| Vote change after donation |
 
 ### Data Sources (all public)
 - **Camara dos Deputados**: dadosabertos.camara.leg.br (votes, CEAP expenses, bills)
