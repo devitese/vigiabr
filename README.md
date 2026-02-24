@@ -7,6 +7,8 @@ Plataforma open-source de monitoramento de transparencia de agentes publicos bra
 [![Licenca: AGPL-3.0](https://img.shields.io/badge/Licen%C3%A7a-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/)
 
+> **Prototipo do frontend:** [devitese.github.io/vigiabr](https://devitese.github.io/vigiabr/)
+
 ---
 
 ## Sumario
