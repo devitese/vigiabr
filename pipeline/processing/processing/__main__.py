@@ -14,6 +14,8 @@ import os
 import sys
 from pathlib import Path
 
+from pydantic import BaseModel
+
 from processing.transformers import TRANSFORMER_REGISTRY, TransformResult
 from processing.validators import DataQualityValidator, PIIHasher
 
@@ -64,8 +66,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--pg-dsn",
-        default=os.environ.get("VIGIABR_PG_DSN", ""),
-        help="PostgreSQL DSN. Falls back to $VIGIABR_PG_DSN env var.",
+        default=os.environ.get("VIGIABR_PG_URI", ""),
+        help="PostgreSQL DSN. Falls back to $VIGIABR_PG_URI env var.",
     )
     parser.add_argument(
         "--neo4j-uri",
@@ -78,7 +80,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--neo4j-pass",
-        default=os.environ.get("VIGIABR_NEO4J_PASS", ""),
+        default=os.environ.get("VIGIABR_NEO4J_PASSWORD", ""),
     )
     parser.add_argument(
         "--cnpj-db",
@@ -185,12 +187,7 @@ def _load(
 
     # Neo4j
     if neo4j_uri:
-        from processing.loaders import Neo4jLoader
-
-        with Neo4jLoader(neo4j_uri, neo4j_auth):
-            for rel_name, records in result.relationships.items():
-                if records:
-                    logger.info("Neo4j relationship '%s': %d records (loading skipped — needs mapping config)", rel_name, len(records))
+        _load_neo4j(result, neo4j_uri, neo4j_auth)
     else:
         logger.warning("No Neo4j URI provided — skipping Neo4j load")
 
@@ -206,6 +203,107 @@ def _load(
                 dicts = [r.model_dump(mode="python") if hasattr(r, "model_dump") else r for r in records]
                 if table == "empresas":
                     local.load_empresas(dicts)
+
+
+# Neo4j node mapping: table_name -> (label, merge_key)
+_NEO4J_NODE_MAP: dict[str, tuple[str, str]] = {
+    "mandatarios": ("Mandatario", "id_tse"),
+    "partidos": ("Partido", "sigla"),
+    "empresas": ("Empresa", "cnpj"),
+    "pessoas_fisicas": ("PessoaFisica", "cpf_hash"),
+    "votacoes": ("Votacao", "id_externo"),
+    "projetos_lei": ("ProjetoLei", "numero"),
+    "emendas": ("Emenda", "numero"),
+    "contratos_gov": ("ContratoGov", "numero"),
+    "bens_patrimoniais": ("BemPatrimonial", "tipo"),
+    "processos_judiciais": ("ProcessoJudicial", "numero_cnj"),
+    "inconsistencias": ("Inconsistencia", "tipo"),
+}
+
+# Neo4j relationship mapping: rel_name -> (rel_type, from_label, to_label, from_key, to_key, from_field, to_field)
+_NEO4J_REL_MAP: dict[str, tuple[str, str, str, str, str, str, str]] = {
+    "mandatario_votos": ("VOTOU", "Mandatario", "Votacao", "id_tse", "id_externo",
+                         "mandatario_id_externo", "votacao_id_externo"),
+}
+
+
+def _load_neo4j(
+    result: TransformResult,
+    neo4j_uri: str,
+    neo4j_auth: tuple[str, str],
+) -> None:
+    """Load entities as nodes and relationships into Neo4j."""
+    from processing.loaders import Neo4jLoader
+
+    with Neo4jLoader(neo4j_uri, neo4j_auth) as neo4j:
+        # 1. Merge entity nodes
+        for table, records in result.entities.items():
+            if not records:
+                continue
+            mapping = _NEO4J_NODE_MAP.get(table)
+            if not mapping:
+                logger.debug("No Neo4j mapping for table %s, skipping", table)
+                continue
+            label, merge_key = mapping
+            dicts = [_to_neo4j_dict(r) for r in records]
+            neo4j.merge_nodes(label, dicts, merge_key)
+
+        # 2. Derive FILIADO_A relationships from mandatario partido_sigla
+        mandatarios = result.entities.get("mandatarios", [])
+        if mandatarios:
+            filiacao_records = []
+            for m in mandatarios:
+                d = _to_neo4j_dict(m)
+                sigla = d.get("partido_sigla")
+                id_tse = d.get("id_tse")
+                if sigla and id_tse:
+                    filiacao_records.append({
+                        "from_id": id_tse,
+                        "to_id": sigla,
+                        "props": {},
+                    })
+            if filiacao_records:
+                # Ensure Partido nodes exist
+                partidos_seen = {r["to_id"] for r in filiacao_records}
+                neo4j.merge_nodes("Partido", [{"sigla": s} for s in partidos_seen], "sigla")
+                neo4j.merge_relationships(
+                    "FILIADO_A", "Mandatario", "Partido", "id_tse", "sigla",
+                    filiacao_records,
+                )
+
+        # 3. Merge explicit relationships
+        for rel_name, records in result.relationships.items():
+            if not records:
+                continue
+            mapping = _NEO4J_REL_MAP.get(rel_name)
+            if not mapping:
+                logger.debug("No Neo4j mapping for relationship %s, skipping", rel_name)
+                continue
+            rel_type, from_label, to_label, from_key, to_key, from_field, to_field = mapping
+            rel_records = []
+            for r in records:
+                d = _to_neo4j_dict(r)
+                rel_records.append({
+                    "from_id": d.get(from_field),
+                    "to_id": d.get(to_field),
+                    "props": {k: v for k, v in d.items()
+                              if k not in (from_field, to_field) and v is not None},
+                })
+            neo4j.merge_relationships(
+                rel_type, from_label, to_label, from_key, to_key, rel_records,
+            )
+
+
+def _to_neo4j_dict(record: object) -> dict:
+    """Convert a Pydantic model or dict to a Neo4j-safe dict."""
+    if isinstance(record, BaseModel):
+        d = record.model_dump(mode="python")
+    elif isinstance(record, dict):
+        d = record
+    else:
+        d = dict(record)
+    # Remove None values (Neo4j doesn't like null properties in SET)
+    return {k: v for k, v in d.items() if v is not None}
 
 
 def main(argv: list[str] | None = None) -> None:

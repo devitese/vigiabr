@@ -16,9 +16,12 @@ DEFAULT_ARGS = {
 
 _PYPATH = "PYTHONPATH=/opt/pipeline/schemas:/opt/pipeline/extraction:/opt/pipeline/processing"
 
-EXTRACTION_CMD = f"cd /opt/pipeline/extraction && {_PYPATH} scrapy crawl {{spider}}"
+EXTRACTION_CMD = (
+    f"cd /opt/pipeline/extraction && {_PYPATH}"
+    " scrapy crawl {spider} -s RAW_OUTPUT_DIR=/opt/pipeline/data/raw"
+)
 BULK_DOWNLOAD_CMD = f"cd /opt/pipeline/extraction && {_PYPATH} python -m bulk.{{downloader}}"
-PROCESSING_CMD = f"{_PYPATH} python -m processing.run {{source}}"
+PROCESSING_CMD = f"{_PYPATH} python -m processing {{source}} --data-dir /opt/pipeline"
 
 
 def extract_cmd(spider: str) -> str:

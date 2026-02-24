@@ -41,7 +41,10 @@ services:
   airflow-scheduler:
     volumes:
       - ../airflow/dags:/opt/airflow/dags:ro
-      - ../../data:/opt/pipeline/data
+      - ../../../data:/opt/pipeline/data
+      - ../../schemas:/opt/pipeline/schemas:ro
+      - ../../extraction:/opt/pipeline/extraction:ro
+      - ../../processing:/opt/pipeline/processing:ro
 
   prometheus:
     ports:
