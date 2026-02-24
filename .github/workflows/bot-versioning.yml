@@ -1,0 +1,527 @@
+# ==============================================================================
+# Bot: Automated Semantic Versioning + Changelog (Two-Stage Pipeline)
+# ==============================================================================
+#
+# On every push to develop (i.e., PR merge), this bot:
+# 1. Detects which services changed
+# 2. Parses Conventional Commits since last tag for each service
+# 3. Calculates SemVer bump (feat->minor, fix->patch, BREAKING CHANGE->major)
+# 4. Creates git tags and pushes them
+# 5. Reads changelog entries from the merged PR's changelog bot comment
+# 6. Writes per-service CHANGELOG.md files
+# 7. Creates GitHub Releases
+# 8. Commits CHANGELOG.md updates to develop with [skip ci]
+#
+# Standards:
+# - SemVer 2.0.0 (semver.org)
+# - Conventional Commits 1.0.0 (conventionalcommits.org)
+# - Keep a Changelog 1.1.0 (keepachangelog.com)
+# - Idempotent: re-running on same commits produces no new tags
+#
+# ==============================================================================
+
+name: 'Bot: Semantic Versioning'
+
+on:
+  push:
+    branches: [develop]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: versioning
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    if: >-
+      !contains(github.event.head_commit.message, '[skip-bots]') &&
+      !contains(github.event.head_commit.message, '[skip-versioning]') &&
+      !contains(github.event.head_commit.message, '[skip ci]')
+    steps:
+      - name: Record start time
+        id: start-time
+        run: echo "time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Run semantic versioning
+        id: version
+        run: |
+          set -euo pipefail
+
+          # ==================================================================
+          # Service-to-path mapping
+          # ==================================================================
+          declare -A SERVICE_PATHS
+          SERVICE_PATHS[backend]="backend/"
+          SERVICE_PATHS[frontend]="frontend/"
+          SERVICE_PATHS[extraction]="pipeline/extraction/"
+          SERVICE_PATHS[processing]="pipeline/processing/"
+          SERVICE_PATHS[platform]="pipeline/platform/"
+          SERVICE_PATHS[contracts]="pipeline/contracts/"
+          SERVICE_PATHS[schemas]="pipeline/schemas/"
+          SERVICE_PATHS[scoring]="scoring/"
+
+          declare -A TAG_PREFIXES
+          TAG_PREFIXES[backend]="backend-v"
+          TAG_PREFIXES[frontend]="frontend-v"
+          TAG_PREFIXES[extraction]="extraction-v"
+          TAG_PREFIXES[processing]="processing-v"
+          TAG_PREFIXES[platform]="platform-v"
+          TAG_PREFIXES[contracts]="contracts-v"
+          TAG_PREFIXES[schemas]="schemas-v"
+          TAG_PREFIXES[scoring]="scoring-v"
+
+          declare -A INITIAL_VERSIONS
+          INITIAL_VERSIONS[backend]="0.1.0"
+          INITIAL_VERSIONS[frontend]="0.1.0"
+          INITIAL_VERSIONS[extraction]="0.1.0"
+          INITIAL_VERSIONS[processing]="0.1.0"
+          INITIAL_VERSIONS[platform]="0.1.0"
+          INITIAL_VERSIONS[contracts]="0.1.0"
+          INITIAL_VERSIONS[schemas]="0.1.0"
+          INITIAL_VERSIONS[scoring]="0.1.0"
+
+          SERVICES_ORDER="backend frontend extraction processing platform contracts schemas scoring"
+
+          # ==================================================================
+          # Helper: bump version
+          # ==================================================================
+          bump_version() {
+            local version="$1"
+            local bump_type="$2"
+
+            local major minor patch
+            IFS='.' read -r major minor patch <<< "$version"
+
+            case "$bump_type" in
+              major)
+                echo "$(( major + 1 )).0.0"
+                ;;
+              minor)
+                echo "${major}.$(( minor + 1 )).0"
+                ;;
+              patch)
+                echo "${major}.${minor}.$(( patch + 1 ))"
+                ;;
+            esac
+          }
+
+          # ==================================================================
+          # Helper: determine bump type from commit messages
+          # ==================================================================
+          determine_bump() {
+            local commits="$1"
+            local bump="patch"
+
+            while IFS= read -r msg; do
+              [ -z "$msg" ] && continue
+
+              # Check for BREAKING CHANGE
+              if echo "$msg" | grep -qiE 'BREAKING CHANGE:|^[a-z]+(\(.+\))?!:'; then
+                echo "major"
+                return
+              fi
+
+              # Check for feat
+              if echo "$msg" | grep -qE '^feat(\(.+\))?:'; then
+                bump="minor"
+              fi
+            done <<< "$commits"
+
+            echo "$bump"
+          }
+
+          # ==================================================================
+          # Main loop: process each service
+          # ==================================================================
+          NEW_TAGS=()
+          SUMMARY_ENTRIES=()
+          TAGS_CREATED=0
+
+          echo "========================================="
+          echo "Semantic Versioning Bot"
+          echo "Commit: ${{ github.sha }}"
+          echo "========================================="
+          echo ""
+
+          for service in $SERVICES_ORDER; do
+            path="${SERVICE_PATHS[$service]}"
+            prefix="${TAG_PREFIXES[$service]}"
+            initial="${INITIAL_VERSIONS[$service]}"
+
+            echo "--- Checking service: $service (path: $path) ---"
+
+            # Check if any files changed in this service
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD -- "$path" 2>/dev/null || echo "")
+            if [ -z "$CHANGED_FILES" ]; then
+              echo "  No changes detected, skipping."
+              echo ""
+              continue
+            fi
+
+            echo "  Changed files:"
+            echo "$CHANGED_FILES" | sed 's/^/    /'
+
+            # Find the latest tag for this service
+            LAST_TAG=$(git tag -l "${prefix}*" --sort=-v:refname | head -1 || echo "")
+
+            if [ -z "$LAST_TAG" ]; then
+              echo "  No existing tag found. Will create initial version: ${prefix}${initial}"
+              BASE_VERSION="0.0.0"
+              # For first tag, get commits from all history that touch this path
+              COMMITS=$(git log --pretty=format:"%s" -- "$path" 2>/dev/null || echo "")
+            else
+              echo "  Latest tag: $LAST_TAG"
+              BASE_VERSION="${LAST_TAG#"$prefix"}"
+              echo "  Base version: $BASE_VERSION"
+
+              # Get commits since last tag touching this service
+              COMMITS=$(git log "${LAST_TAG}..HEAD" --pretty=format:"%s" -- "$path" 2>/dev/null || echo "")
+            fi
+
+            if [ -z "$COMMITS" ]; then
+              echo "  No new commits since last tag, skipping."
+              echo ""
+              continue
+            fi
+
+            echo "  Commits to analyze:"
+            echo "$COMMITS" | sed 's/^/    /'
+
+            # Determine bump type
+            BUMP_TYPE=$(determine_bump "$COMMITS")
+            echo "  Bump type: $BUMP_TYPE"
+
+            # Calculate new version
+            if [ "$BASE_VERSION" = "0.0.0" ]; then
+              # No prior tag: use the initial version
+              NEW_VERSION="$initial"
+            else
+              NEW_VERSION=$(bump_version "$BASE_VERSION" "$BUMP_TYPE")
+            fi
+
+            NEW_TAG="${prefix}${NEW_VERSION}"
+
+            # Idempotency: check if this tag already exists
+            if git tag -l "$NEW_TAG" | grep -q "$NEW_TAG"; then
+              echo "  Tag $NEW_TAG already exists, skipping (idempotent)."
+              echo ""
+              continue
+            fi
+
+            echo "  Creating tag: $NEW_TAG"
+
+            # Create the tag
+            git tag "$NEW_TAG" -m "chore(release): ${service} v${NEW_VERSION} [skip ci]"
+
+            NEW_TAGS+=("$NEW_TAG")
+            SUMMARY_ENTRIES+=("{\"service\":\"${service}\",\"version\":\"${NEW_VERSION}\",\"bump\":\"${BUMP_TYPE}\",\"tag\":\"${NEW_TAG}\",\"previous\":\"${BASE_VERSION}\"}")
+            TAGS_CREATED=$((TAGS_CREATED + 1))
+
+            echo "  Tag $NEW_TAG created successfully."
+            echo ""
+          done
+
+          # ==================================================================
+          # Push all new tags at once
+          # ==================================================================
+          if [ ${#NEW_TAGS[@]} -gt 0 ]; then
+            echo "========================================="
+            echo "Pushing ${#NEW_TAGS[@]} new tag(s)..."
+            echo "========================================="
+            git push origin --tags
+            echo "Tags pushed successfully."
+          else
+            echo "========================================="
+            echo "No new tags to create."
+            echo "========================================="
+          fi
+
+          # ==================================================================
+          # Output summary
+          # ==================================================================
+          SUMMARY_JSON="{\"tags_created\":${TAGS_CREATED},\"tags\":["
+          FIRST=true
+          for entry in "${SUMMARY_ENTRIES[@]:-}"; do
+            [ -z "$entry" ] && continue
+            if [ "$FIRST" = true ]; then
+              FIRST=false
+            else
+              SUMMARY_JSON+=","
+            fi
+            SUMMARY_JSON+="$entry"
+          done
+          SUMMARY_JSON+="]}"
+
+          echo "summary=${SUMMARY_JSON}" >> "$GITHUB_OUTPUT"
+
+          # Write step summary
+          echo "## Semantic Versioning Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Commit:** \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ ${TAGS_CREATED} -gt 0 ]; then
+            echo "### Tags Created" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Service | Previous | New Version | Bump Type | Tag |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|---------|----------|-------------|-----------|-----|" >> "$GITHUB_STEP_SUMMARY"
+            for entry in "${SUMMARY_ENTRIES[@]:-}"; do
+              [ -z "$entry" ] && continue
+              svc=$(echo "$entry" | jq -r '.service')
+              ver=$(echo "$entry" | jq -r '.version')
+              bump=$(echo "$entry" | jq -r '.bump')
+              tag=$(echo "$entry" | jq -r '.tag')
+              prev=$(echo "$entry" | jq -r '.previous')
+              echo "| ${svc} | ${prev} | ${ver} | ${bump} | \`${tag}\` |" >> "$GITHUB_STEP_SUMMARY"
+            done
+          else
+            echo "No services required version bumps." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "*Run ID: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})*" >> "$GITHUB_STEP_SUMMARY"
+
+      # ==================================================================
+      # Stage 2: Changelog & Releases (only if tags were created)
+      # ==================================================================
+
+      - name: Find merged PR and read changelog comment
+        if: steps.version.outputs.summary != '' && contains(steps.version.outputs.summary, '"tags_created":0') == false
+        id: changelog
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          COMMIT_SHA="${{ github.sha }}"
+          echo "Looking for merged PR for commit $COMMIT_SHA..."
+
+          # Find the PR that was merged with this commit
+          PR_NUMBER=$(gh pr list \
+            --state merged \
+            --search "$COMMIT_SHA" \
+            --json number \
+            --jq '.[0].number' 2>/dev/null || echo "")
+
+          if [ -z "$PR_NUMBER" ]; then
+            # Fallback: try to extract PR number from merge commit message
+            MERGE_MSG=$(git log -1 --format="%s" HEAD)
+            PR_NUMBER=$(echo "$MERGE_MSG" | grep -oP '#\K[0-9]+' | head -1 || echo "")
+          fi
+
+          if [ -z "$PR_NUMBER" ]; then
+            echo "::warning::Could not find merged PR number. Skipping changelog."
+            echo "has_changelog=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Found PR #${PR_NUMBER}"
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+          # Read the changelog bot comment from the PR
+          CHANGELOG_COMMENT=$(gh api \
+            "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+            --jq '.[] | select(.body | contains("<!-- changelog-bot -->")) | .body' \
+            2>/dev/null || echo "")
+
+          if [ -z "$CHANGELOG_COMMENT" ]; then
+            echo "::notice::No changelog bot comment found on PR #${PR_NUMBER}. Skipping changelog."
+            echo "has_changelog=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Found changelog bot comment on PR #${PR_NUMBER}"
+          echo "has_changelog=true" >> "$GITHUB_OUTPUT"
+
+          # Save the full comment to a file for parsing
+          echo "$CHANGELOG_COMMENT" > /tmp/changelog_comment.txt
+
+      - name: Write CHANGELOG.md files and create releases
+        if: steps.changelog.outputs.has_changelog == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+          VERSION_SUMMARY: ${{ steps.version.outputs.summary }}
+        run: |
+          set -euo pipefail
+
+          TODAY=$(date +%Y-%m-%d)
+          CHANGELOG_UPDATED=false
+
+          python3 - "$VERSION_SUMMARY" "$TODAY" << 'PYEOF'
+          import json, sys, os, re
+
+          summary = json.loads(sys.argv[1])
+          today = sys.argv[2]
+
+          changelog_files = {
+              "backend": "backend/CHANGELOG.md",
+              "frontend": "frontend/CHANGELOG.md",
+              "extraction": "pipeline/extraction/CHANGELOG.md",
+              "processing": "pipeline/processing/CHANGELOG.md",
+              "platform": "pipeline/platform/CHANGELOG.md",
+              "contracts": "pipeline/contracts/CHANGELOG.md",
+              "schemas": "pipeline/schemas/CHANGELOG.md",
+              "scoring": "scoring/CHANGELOG.md",
+          }
+
+          display_names = {
+              "backend": "Backend API",
+              "frontend": "Frontend",
+              "extraction": "Pipeline — Extraction",
+              "processing": "Pipeline — Processing",
+              "platform": "Pipeline — Platform",
+              "contracts": "Pipeline — Contracts",
+              "schemas": "Pipeline — Schemas",
+              "scoring": "Scoring (SCI)",
+          }
+
+          # Read the changelog bot comment
+          with open("/tmp/changelog_comment.txt", "r") as f:
+              comment = f.read()
+
+          for tag_info in summary.get("tags", []):
+              service = tag_info["service"]
+              version = tag_info["version"]
+              tag = tag_info["tag"]
+
+              print(f"Processing changelog for {service} v{version} (tag: {tag})...")
+
+              changelog_file = changelog_files.get(service, "")
+              display_name = display_names.get(service, service)
+
+              # Extract service section from bot comment
+              pattern = rf"<!-- service:{re.escape(service)} -->\n(.*?)\n<!-- /service:{re.escape(service)} -->"
+              match = re.search(pattern, comment, re.DOTALL)
+
+              if not match:
+                  print(f"  No changelog content for {service}")
+                  with open(f"/tmp/release_notes_{service}.md", "w") as f:
+                      f.write(f"Release {display_name} v{version}. See commit history for details.\n")
+                  continue
+
+              service_content = match.group(1).strip()
+              version_header = f"## [{version}] - {today}"
+              version_entry = f"{version_header}\n\n{service_content}"
+
+              # Write per-service release notes
+              with open(f"/tmp/release_notes_{service}.md", "w") as f:
+                  f.write(version_entry + "\n")
+
+              # Update or create CHANGELOG.md
+              if os.path.exists(changelog_file):
+                  with open(changelog_file, "r") as f:
+                      content = f.read()
+
+                  if "## [Unreleased]" in content:
+                      content = content.replace(
+                          "## [Unreleased]",
+                          f"## [Unreleased]\n\n{version_entry}",
+                          1,
+                      )
+                  else:
+                      # Insert after first heading
+                      content = content.replace(
+                          "# Changelog",
+                          f"# Changelog\n\n## [Unreleased]\n\n{version_entry}",
+                          1,
+                      )
+              else:
+                  os.makedirs(os.path.dirname(changelog_file), exist_ok=True)
+                  content = (
+                      f"# Changelog\n\n"
+                      f"All notable changes to the **{display_name}** service will be documented in this file.\n\n"
+                      f"The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),\n"
+                      f"and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n\n"
+                      f"## [Unreleased]\n\n"
+                      f"{version_entry}\n"
+                  )
+
+              with open(changelog_file, "w") as f:
+                  f.write(content)
+
+              print(f"  Updated {changelog_file}")
+              print(f"UPDATED:{changelog_file}")
+              print(f"RELEASE:{tag}:{display_name} v{version}")
+
+          PYEOF
+
+          # Stage updated changelog files
+          for f in backend/CHANGELOG.md frontend/CHANGELOG.md pipeline/extraction/CHANGELOG.md pipeline/processing/CHANGELOG.md pipeline/platform/CHANGELOG.md pipeline/contracts/CHANGELOG.md pipeline/schemas/CHANGELOG.md scoring/CHANGELOG.md; do
+            if [ -f "$f" ] && ! git diff --quiet -- "$f" 2>/dev/null; then
+              git add "$f"
+              CHANGELOG_UPDATED=true
+            fi
+          done
+
+          # Create GitHub Releases for each tag
+          TAGS_JSON=$(echo "$VERSION_SUMMARY" | jq -c '.tags[]')
+          while IFS= read -r tag_entry; do
+            [ -z "$tag_entry" ] && continue
+            TAG=$(echo "$tag_entry" | jq -r '.tag')
+            SERVICE=$(echo "$tag_entry" | jq -r '.service')
+            VERSION=$(echo "$tag_entry" | jq -r '.version')
+
+            case "$SERVICE" in
+              backend)    DISPLAY="Backend API" ;;
+              frontend)   DISPLAY="Frontend" ;;
+              extraction) DISPLAY="Pipeline — Extraction" ;;
+              processing) DISPLAY="Pipeline — Processing" ;;
+              platform)   DISPLAY="Pipeline — Platform" ;;
+              contracts)  DISPLAY="Pipeline — Contracts" ;;
+              schemas)    DISPLAY="Pipeline — Schemas" ;;
+              scoring)    DISPLAY="Scoring (SCI)" ;;
+              *)          DISPLAY="$SERVICE" ;;
+            esac
+
+            if gh release view "$TAG" > /dev/null 2>&1; then
+              echo "Release for $TAG already exists, skipping."
+            elif [ -f "/tmp/release_notes_${SERVICE}.md" ]; then
+              gh release create "$TAG" \
+                --title "${DISPLAY} v${VERSION}" \
+                --notes-file "/tmp/release_notes_${SERVICE}.md"
+              echo "Created GitHub Release: ${DISPLAY} v${VERSION}"
+            else
+              gh release create "$TAG" \
+                --title "${DISPLAY} v${VERSION}" \
+                --notes "Release ${DISPLAY} v${VERSION}."
+              echo "Created GitHub Release: ${DISPLAY} v${VERSION}"
+            fi
+          done <<< "$TAGS_JSON"
+
+          # Commit all CHANGELOG.md updates at once
+          if [ "$CHANGELOG_UPDATED" = true ]; then
+            if git diff --cached --quiet; then
+              echo "No changelog changes to commit."
+            else
+              git commit -m "docs(changelog): update changelogs for new versions [skip ci]"
+              git push origin develop
+              echo "Committed and pushed changelog updates to develop."
+            fi
+          fi
+
+      - name: Log Metrics
+        if: always()
+        uses: ./.github/actions/bot-metrics
+        with:
+          bot_name: 'versioning-bot'
+          pr_number: '0'
+          structured_output: "${{ steps.version.outputs.summary || '{}' }}"
+          execution_start_time: ${{ steps.start-time.outputs.time }}
+          blocked_merge: 'false'
+          braintrust_api_key: ${{ secrets.BRAINTRUST_API_KEY }}

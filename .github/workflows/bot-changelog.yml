@@ -1,0 +1,287 @@
+# ==============================================================================
+# Bot: Changelog Generator (Stage 1 — PR Time)
+# ==============================================================================
+#
+# Triggers on pull requests (like other bots).
+#
+# Process:
+# 1. Detect which services are affected by the PR
+# 2. Get PR commits scoped to each service's paths
+# 3. Use Claude to generate Keep a Changelog formatted entries
+# 4. Post a structured PR comment (parseable by the versioning bot)
+#
+# The versioning bot (Stage 2) reads this comment post-merge to:
+# - Write per-service CHANGELOG.md files
+# - Create GitHub Releases
+# ==============================================================================
+
+name: 'Bot: Changelog Generator'
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+concurrency:
+  group: changelog-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  changelog:
+    if: >-
+      github.event.pull_request.draft == false &&
+      !contains(github.event.pull_request.title, '[skip-bots]') &&
+      !contains(github.event.pull_request.title, '[skip-bot: changelog]')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Record start time
+        id: start-time
+        run: echo "time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect affected services
+        id: detect
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+
+          # Service-to-path mapping (same as versioning bot)
+          declare -A SERVICE_PATHS
+          SERVICE_PATHS[backend]="backend/"
+          SERVICE_PATHS[frontend]="frontend/"
+          SERVICE_PATHS[extraction]="pipeline/extraction/"
+          SERVICE_PATHS[processing]="pipeline/processing/"
+          SERVICE_PATHS[platform]="pipeline/platform/"
+          SERVICE_PATHS[contracts]="pipeline/contracts/"
+          SERVICE_PATHS[schemas]="pipeline/schemas/"
+          SERVICE_PATHS[scoring]="scoring/"
+
+          declare -A DISPLAY_NAMES
+          DISPLAY_NAMES[backend]="Backend API"
+          DISPLAY_NAMES[frontend]="Frontend"
+          DISPLAY_NAMES[extraction]="Pipeline — Extraction"
+          DISPLAY_NAMES[processing]="Pipeline — Processing"
+          DISPLAY_NAMES[platform]="Pipeline — Platform"
+          DISPLAY_NAMES[contracts]="Pipeline — Contracts"
+          DISPLAY_NAMES[schemas]="Pipeline — Schemas"
+          DISPLAY_NAMES[scoring]="Scoring (SCI)"
+
+          SERVICES_ORDER="backend frontend extraction processing platform contracts schemas scoring"
+
+          AFFECTED=""
+          AFFECTED_DISPLAY=""
+
+          for service in $SERVICES_ORDER; do
+            path="${SERVICE_PATHS[$service]}"
+            # Check if any code files changed in this service path
+            CHANGED=$(git diff --name-only "$BASE_SHA" HEAD -- "$path" \
+              ':!*CLAUDE.md' ':!*CHANGELOG.md' 2>/dev/null || true)
+
+            if [ -n "$CHANGED" ]; then
+              if [ -n "$AFFECTED" ]; then
+                AFFECTED="$AFFECTED,$service"
+                AFFECTED_DISPLAY="$AFFECTED_DISPLAY, ${DISPLAY_NAMES[$service]}"
+              else
+                AFFECTED="$service"
+                AFFECTED_DISPLAY="${DISPLAY_NAMES[$service]}"
+              fi
+              echo "  Service '$service' affected (${path})"
+            fi
+          done
+
+          if [ -z "$AFFECTED" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "No service code changes detected — skipping changelog."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "affected=$AFFECTED" >> "$GITHUB_OUTPUT"
+            echo "affected_display=$AFFECTED_DISPLAY" >> "$GITHUB_OUTPUT"
+            echo "Affected services: $AFFECTED"
+          fi
+
+      - name: Get commit log per service
+        if: steps.detect.outputs.skip != 'true'
+        id: commits
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          AFFECTED="${{ steps.detect.outputs.affected }}"
+
+          declare -A SERVICE_PATHS
+          SERVICE_PATHS[backend]="backend/"
+          SERVICE_PATHS[frontend]="frontend/"
+          SERVICE_PATHS[extraction]="pipeline/extraction/"
+          SERVICE_PATHS[processing]="pipeline/processing/"
+          SERVICE_PATHS[platform]="pipeline/platform/"
+          SERVICE_PATHS[contracts]="pipeline/contracts/"
+          SERVICE_PATHS[schemas]="pipeline/schemas/"
+          SERVICE_PATHS[scoring]="scoring/"
+
+          mkdir -p /tmp/changelog
+          HAS_COMMITS=false
+
+          IFS=',' read -ra SERVICES <<< "$AFFECTED"
+          for service in "${SERVICES[@]}"; do
+            path="${SERVICE_PATHS[$service]}"
+            COMMIT_LOG=$(git log "${BASE_SHA}..HEAD" --pretty=format:"%H %s" -- "$path" 2>/dev/null || echo "")
+
+            if [ -n "$COMMIT_LOG" ]; then
+              echo "$COMMIT_LOG" > "/tmp/changelog/${service}.txt"
+              COMMIT_COUNT=$(echo "$COMMIT_LOG" | wc -l | tr -d ' ')
+              echo "  ${service}: ${COMMIT_COUNT} commits"
+              HAS_COMMITS=true
+            else
+              echo "  ${service}: no commits"
+            fi
+          done
+
+          echo "has_commits=$HAS_COMMITS" >> "$GITHUB_OUTPUT"
+
+      - name: Generate changelog with Claude
+        if: steps.detect.outputs.skip != 'true' && steps.commits.outputs.has_commits == 'true'
+        id: changelog
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: >-
+            --allowedTools Read,Bash
+          prompt: |
+            You are the Changelog Generator bot for VigiaBR. Generate Keep a Changelog entries from PR commits, grouped by affected service.
+
+            ## Context
+
+            - **PR**: #${{ github.event.pull_request.number }} — ${{ github.event.pull_request.title }}
+            - **Affected Services**: ${{ steps.detect.outputs.affected_display }}
+            - **Repository**: ${{ github.repository }}
+
+            ## Instructions
+
+            1. Read the commit logs from `/tmp/changelog/`. Each file is named `{service}.txt` with one commit per line: `<hash> <message>`
+
+            2. For EACH service that has a commit log file, generate a changelog section following Keep a Changelog 1.1.0 format. Group commits by type:
+               - `feat` commits -> **Added**
+               - `fix` commits -> **Fixed**
+               - `refactor`, `perf` commits -> **Changed**
+               - `deprecated` commits -> **Deprecated**
+               - `revert` commits -> **Removed**
+               - Security-related commits -> **Security**
+               - Other notable commits (docs, chore with user-visible impact) -> **Changed**
+               - Skip pure CI/CD, test-only, and changelog commits (e.g., `[skip ci]`, `docs(changelog):`)
+
+            3. For each entry:
+               - Write a clear, concise human-readable description (do NOT just copy the raw commit message)
+               - If the commit message contains `(#123)`, include a PR link: `([#123](https://github.com/${{ github.repository }}/pull/123))`
+               - Deduplicate similar entries (e.g., multiple fixups for the same feature)
+
+            4. Write the output to `/tmp/changelog/output.md` in this EXACT format (the versioning bot parses this):
+
+               ```
+               <!-- changelog-bot -->
+               <!-- service:SERVICE_NAME -->
+               ### Added
+               - Entry here
+
+               ### Fixed
+               - Entry here
+               <!-- /service:SERVICE_NAME -->
+               <!-- service:ANOTHER_SERVICE -->
+               ### Changed
+               - Entry here
+               <!-- /service:ANOTHER_SERVICE -->
+               <!-- /changelog-bot -->
+               ```
+
+               CRITICAL format rules:
+               - Use `<!-- changelog-bot -->` and `<!-- /changelog-bot -->` as outer markers
+               - Use `<!-- service:NAME -->` and `<!-- /service:NAME -->` for each service section
+               - NAME must be exactly one of: backend, frontend, extraction, processing, platform, contracts, schemas, scoring
+               - Only include section headers (Added, Fixed, Changed, etc.) that have entries
+               - Do NOT include version numbers — those are added by the versioning bot
+
+            5. After writing the file, print "DONE" to confirm completion.
+
+      - name: Post PR comment
+        if: steps.detect.outputs.skip != 'true' && steps.commits.outputs.has_commits == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = '/tmp/changelog/output.md';
+
+            let changelogContent = '';
+            try {
+              changelogContent = fs.readFileSync(path, 'utf8').trim();
+            } catch (e) {
+              console.log('No changelog output file found, skipping comment.');
+              return;
+            }
+
+            if (!changelogContent || !changelogContent.includes('<!-- changelog-bot -->')) {
+              console.log('No valid changelog content generated, skipping comment.');
+              return;
+            }
+
+            const affected = '${{ steps.detect.outputs.affected_display }}';
+            const body = [
+              '## Changelog Preview',
+              '',
+              `**Affected services**: ${affected}`,
+              '',
+              'The following changelog entries will be added when this PR is merged and versioned:',
+              '',
+              changelogContent,
+              '',
+              '---',
+              `*Run ID: [${context.runId}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})*`,
+            ].join('\n');
+
+            // Upsert: find existing bot comment or create new one
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(c =>
+              c.body.includes('<!-- changelog-bot -->') && c.user.type === 'Bot'
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body,
+              });
+              console.log('Updated existing changelog comment.');
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+              console.log('Created new changelog comment.');
+            }
+
+      - name: Skip notice
+        if: steps.detect.outputs.skip == 'true'
+        run: echo "::notice::No service code changes detected. Changelog generation skipped."
+
+      - name: Log Metrics
+        if: always() && steps.detect.outputs.skip != 'true'
+        uses: ./.github/actions/bot-metrics
+        with:
+          bot_name: 'changelog-bot'
+          pr_number: ${{ github.event.pull_request.number }}
+          structured_output: '{"affected_services":"${{ steps.detect.outputs.affected || ''none'' }}","has_commits":"${{ steps.commits.outputs.has_commits || ''false'' }}"}'
+          execution_start_time: ${{ steps.start-time.outputs.time }}
+          blocked_merge: 'false'
+          braintrust_api_key: ${{ secrets.BRAINTRUST_API_KEY }}

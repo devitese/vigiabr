@@ -1,0 +1,116 @@
+name: 'Bot Metrics Logger'
+description: 'Log bot execution metrics to Braintrust for observability'
+
+inputs:
+  bot_name:
+    description: 'Name of the bot (e.g., versioning-bot)'
+    required: true
+  pr_number:
+    description: 'PR number that triggered the bot'
+    required: true
+  structured_output:
+    description: 'JSON string of bot structured output'
+    required: true
+  execution_start_time:
+    description: 'ISO timestamp when bot execution started'
+    required: true
+  blocked_merge:
+    description: 'Whether the bot blocked the merge'
+    required: false
+    default: 'false'
+  braintrust_api_key:
+    description: 'Braintrust API key'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Calculate execution time and log metrics
+      shell: bash
+      env:
+        BOT_NAME: ${{ inputs.bot_name }}
+        PR_NUMBER: ${{ inputs.pr_number }}
+        STRUCTURED_OUTPUT: ${{ inputs.structured_output }}
+        EXECUTION_START: ${{ inputs.execution_start_time }}
+        BLOCKED_MERGE: ${{ inputs.blocked_merge }}
+        BRAINTRUST_API_KEY: ${{ inputs.braintrust_api_key }}
+        RUN_ID: ${{ github.run_id }}
+        REPO: ${{ github.repository }}
+      run: |
+        # Calculate execution time
+        START_EPOCH=$(date -d "$EXECUTION_START" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S" "$EXECUTION_START" +%s 2>/dev/null || echo "0")
+        END_EPOCH=$(date +%s)
+        if [ "$START_EPOCH" != "0" ]; then
+          EXECUTION_MS=$(( (END_EPOCH - START_EPOCH) * 1000 ))
+        else
+          EXECUTION_MS=0
+        fi
+
+        # Check for developer bypass
+        PR_TITLE="${{ github.event.pull_request.title }}"
+        DEVELOPER_OVERRIDE=false
+        if echo "$PR_TITLE" | grep -qE '\[skip-bots\]|\[skip-bot:'; then
+          DEVELOPER_OVERRIDE=true
+        fi
+
+        # Build metrics payload
+        METRICS_PAYLOAD=$(cat <<METRICS_EOF
+        {
+          "bot_name": "${BOT_NAME}",
+          "run_id": "${RUN_ID}",
+          "pr_number": ${PR_NUMBER},
+          "repository": "${REPO}",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "execution_time_ms": ${EXECUTION_MS},
+          "blocked_merge": ${BLOCKED_MERGE},
+          "developer_override": ${DEVELOPER_OVERRIDE},
+          "structured_output": ${STRUCTURED_OUTPUT}
+        }
+        METRICS_EOF
+        )
+
+        echo "::group::Bot Metrics"
+        echo "$METRICS_PAYLOAD" | jq . 2>/dev/null || echo "$METRICS_PAYLOAD"
+        echo "::endgroup::"
+
+        # ================================================================
+        # Log to Braintrust — single "GitHub Bots" project for all bots
+        # ================================================================
+        if [ -z "$BRAINTRUST_API_KEY" ]; then
+          echo "::notice::No Braintrust API key configured. Metrics logged to step summary only."
+          exit 0
+        fi
+
+        PROJECT_NAME="GitHub Bots"
+
+        PROJECT_ID=$(curl -s \
+          -H "Authorization: Bearer ${BRAINTRUST_API_KEY}" \
+          "https://api.braintrust.dev/v1/project?project_name=${PROJECT_NAME// /%20}" \
+          --max-time 10 2>/dev/null | jq -r '.objects[0].id // .id // empty' 2>/dev/null) || true
+
+        if [ -z "$PROJECT_ID" ]; then
+          PROJECT_ID=$(curl -s \
+            -X POST "https://api.braintrust.dev/v1/project" \
+            -H "Authorization: Bearer ${BRAINTRUST_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"name\": \"${PROJECT_NAME}\"}" \
+            --max-time 10 2>/dev/null | jq -r '.id // empty' 2>/dev/null) || true
+        fi
+
+        if [ -z "$PROJECT_ID" ]; then
+          echo "::warning::Could not find or create Braintrust project '${PROJECT_NAME}' (non-blocking)"
+          exit 0
+        fi
+
+        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+          -X POST "https://api.braintrust.dev/v1/project_logs/${PROJECT_ID}/insert" \
+          -H "Authorization: Bearer ${BRAINTRUST_API_KEY}" \
+          -H "Content-Type: application/json" \
+          -d "{\"events\": [{\"input\": {\"pr_number\": ${PR_NUMBER}, \"repository\": \"${REPO}\"}, \"output\": ${STRUCTURED_OUTPUT}, \"metrics\": {\"execution_time_ms\": ${EXECUTION_MS}}, \"metadata\": {\"bot_name\": \"${BOT_NAME}\", \"run_id\": \"${RUN_ID}\", \"blocked_merge\": ${BLOCKED_MERGE}, \"developer_override\": ${DEVELOPER_OVERRIDE}}, \"tags\": [\"bot-metrics\", \"${BOT_NAME}\"]}]}" \
+          --max-time 10 2>/dev/null) || true
+
+        if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "201" ]; then
+          echo "Metrics logged to Braintrust project '${PROJECT_NAME}' (HTTP $HTTP_STATUS)"
+        else
+          echo "::warning::Metrics logging returned HTTP $HTTP_STATUS (non-blocking)"
+        fi
