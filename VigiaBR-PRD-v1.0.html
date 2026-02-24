@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VigiaBR — PRD v1.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=IBM+Plex+Mono:wght@400;600&family=Source+Serif+4:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0d0d0d;
+    --paper: #f5f0e8;
+    --red: #c0392b;
+    --red-light: #fdf0ee;
+    --navy: #1a2744;
+    --navy-light: #eef1f7;
+    --gold: #b8860b;
+    --gold-light: #fdf9ee;
+    --gray: #6b7280;
+    --border: #d1c9b8;
+    --mono: 'IBM Plex Mono', monospace;
+    --serif: 'Source Serif 4', serif;
+    --display: 'Playfair Display', serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  @media print {
+    body { background: white; }
+    .no-print { display: none; }
+    section { page-break-inside: avoid; }
+    .page-break { page-break-before: always; }
+  }
+
+  body {
+    background: #e8e2d8;
+    font-family: var(--serif);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .document {
+    max-width: 860px;
+    margin: 0 auto;
+    background: var(--paper);
+    box-shadow: 0 20px 80px rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.12);
+    position: relative;
+  }
+
+  /* ── CAPA ── */
+  .cover {
+    background: var(--navy);
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+    min-height: 520px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cover-noise {
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .cover-lines {
+    position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.03) 39px, rgba(255,255,255,0.03) 40px);
+    pointer-events: none;
+  }
+
+  .cover-badge {
+    background: var(--red);
+    color: white;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 0.45rem 1.4rem;
+    width: fit-content;
+    margin: 2rem 2.5rem;
+    position: relative;
+  }
+
+  .cover-body {
+    padding: 0.5rem 2.5rem 2.5rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    position: relative;
+  }
+
+  .cover-eyebrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.45);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+
+  .cover-title {
+    font-family: var(--display);
+    font-size: clamp(4rem, 10vw, 7rem);
+    font-weight: 900;
+    color: white;
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+  }
+
+  .cover-title span {
+    color: var(--red);
+    display: inline-block;
+  }
+
+  .cover-subtitle {
+    font-family: var(--serif);
+    font-size: 1rem;
+    font-weight: 300;
+    color: rgba(255,255,255,0.6);
+    margin-top: 1.2rem;
+    max-width: 480px;
+    line-height: 1.5;
+  }
+
+  .cover-meta {
+    display: flex;
+    gap: 2rem;
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .cover-meta-item { display: flex; flex-direction: column; gap: 0.2rem; }
+  .cover-meta-label { font-family: var(--mono); font-size: 0.6rem; color: rgba(255,255,255,0.35); letter-spacing: 0.15em; text-transform: uppercase; }
+  .cover-meta-value { font-family: var(--mono); font-size: 0.8rem; color: rgba(255,255,255,0.8); }
+
+  .cover-accent {
+    position: absolute; right: 0; top: 0; bottom: 0; width: 6px;
+    background: linear-gradient(180deg, var(--red) 0%, var(--gold) 100%);
+  }
+
+  /* ── CORPO ── */
+  .body-content { padding: 3rem 3.5rem; }
+
+  /* ── NAV LATERAL ── */
+  .toc {
+    background: var(--navy-light);
+    border-left: 4px solid var(--navy);
+    padding: 1.5rem 2rem;
+    margin-bottom: 3rem;
+  }
+
+  .toc-title {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--navy);
+    margin-bottom: 1rem;
+    font-weight: 600;
+  }
+
+  .toc ol { list-style: none; padding: 0; counter-reset: toc; }
+  .toc ol li { counter-increment: toc; padding: 0.25rem 0; border-bottom: 1px dotted var(--border); display: flex; align-items: center; gap: 0.75rem; }
+  .toc ol li::before { content: counter(toc, decimal-leading-zero); font-family: var(--mono); font-size: 0.65rem; color: var(--gray); min-width: 1.5rem; }
+  .toc ol li a { font-size: 0.85rem; color: var(--navy); text-decoration: none; font-weight: 400; }
+  .toc ol li a:hover { color: var(--red); }
+
+  /* ── SECTIONS ── */
+  .section { margin-bottom: 3.5rem; }
+  .page-break { margin-top: 3rem; padding-top: 3rem; border-top: 2px solid var(--border); }
+
+  .section-number {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: var(--red);
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1.15;
+    margin-bottom: 1.2rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 2px solid var(--border);
+  }
+
+  h2 {
+    font-family: var(--display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-top: 2rem;
+    margin-bottom: 0.8rem;
+  }
+
+  h3 {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--red);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: 1.5rem;
+    margin-bottom: 0.6rem;
+  }
+
+  p { font-size: 0.95rem; line-height: 1.75; color: #2d2d2d; margin-bottom: 0.9rem; }
+
+  ul, ol { padding-left: 1.4rem; margin-bottom: 1rem; }
+  li { font-size: 0.93rem; line-height: 1.7; color: #2d2d2d; margin-bottom: 0.35rem; }
+
+  /* ── BOXES ── */
+  .box {
+    border-radius: 0;
+    padding: 1.2rem 1.5rem;
+    margin: 1.2rem 0;
+    border-left: 4px solid;
+  }
+
+  .box-principle { border-color: var(--navy); background: var(--navy-light); }
+  .box-allowed { border-color: #27ae60; background: #f0fff4; }
+  .box-forbidden { border-color: var(--red); background: var(--red-light); }
+  .box-info { border-color: var(--gold); background: var(--gold-light); }
+
+  .box-label {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .box-principle .box-label { color: var(--navy); }
+  .box-allowed .box-label { color: #27ae60; }
+  .box-forbidden .box-label { color: var(--red); }
+  .box-info .box-label { color: var(--gold); }
+
+  .box p { margin: 0; font-size: 0.9rem; }
+
+  /* ── TABLES ── */
+  .table-wrap { overflow-x: auto; margin: 1.2rem 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+
+  thead tr { background: var(--navy); }
+  thead th { color: white; font-family: var(--mono); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.7rem 0.9rem; text-align: left; }
+
+  tbody tr:nth-child(even) { background: rgba(0,0,0,0.025); }
+  tbody td { padding: 0.65rem 0.9rem; border-bottom: 1px solid var(--border); color: #2d2d2d; line-height: 1.5; vertical-align: top; }
+
+  .score-verde { background: #e8f5e9; color: #1b5e20; font-weight: 700; font-family: var(--mono); }
+  .score-amarelo { background: #fffde7; color: #f57f17; font-weight: 700; font-family: var(--mono); }
+  .score-laranja { background: #fff3e0; color: #e65100; font-weight: 700; font-family: var(--mono); }
+  .score-vermelho { background: #ffebee; color: #b71c1c; font-weight: 700; font-family: var(--mono); }
+
+  /* ── TECH STACK CARDS ── */
+  .stack-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin: 1.2rem 0; }
+
+  .stack-card {
+    border: 1px solid var(--border);
+    padding: 1rem 1.1rem;
+    background: white;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stack-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--navy);
+  }
+
+  .stack-card-layer { font-family: var(--mono); font-size: 0.6rem; color: var(--gray); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 0.4rem; }
+  .stack-card-tech { font-family: var(--mono); font-size: 0.9rem; font-weight: 600; color: var(--navy); margin-bottom: 0.3rem; }
+  .stack-card-desc { font-size: 0.8rem; color: var(--gray); line-height: 1.4; }
+  .stack-card-oss { display: inline-block; margin-top: 0.5rem; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; color: #27ae60; border: 1px solid #27ae60; padding: 0.15rem 0.4rem; }
+
+  /* ── ROADMAP ── */
+  .roadmap { display: flex; flex-direction: column; gap: 0; margin: 1.2rem 0; border: 1px solid var(--border); }
+
+  .roadmap-item { display: grid; grid-template-columns: 110px 1fr; border-bottom: 1px solid var(--border); }
+  .roadmap-item:last-child { border-bottom: none; }
+
+  .roadmap-phase {
+    background: var(--navy);
+    color: white;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 1rem;
+    display: flex; flex-direction: column; gap: 0.2rem;
+    justify-content: center;
+  }
+
+  .roadmap-phase-label { font-size: 0.6rem; opacity: 0.6; letter-spacing: 0.1em; text-transform: uppercase; }
+  .roadmap-period { font-family: var(--mono); font-size: 0.65rem; color: rgba(255,255,255,0.55); margin-top: 0.2rem; }
+
+  .roadmap-body { padding: 1rem 1.2rem; }
+  .roadmap-deliverables { font-size: 0.85rem; color: #2d2d2d; line-height: 1.6; }
+
+  /* ── SCI VISUAL ── */
+  .sci-bar {
+    display: flex; height: 28px; border-radius: 0; overflow: hidden;
+    margin: 1rem 0; border: 1px solid var(--border);
+  }
+  .sci-bar div { display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 0.65rem; font-weight: 600; color: white; }
+  .sci-bar .s-red { background: #c62828; flex: 3; }
+  .sci-bar .s-orange { background: #e64a19; flex: 2; }
+  .sci-bar .s-yellow { background: #f9a825; flex: 3; color: #333; }
+  .sci-bar .s-green { background: #2e7d32; flex: 2; }
+
+  .sci-labels { display: flex; font-family: var(--mono); font-size: 0.65rem; color: var(--gray); justify-content: space-between; margin-top: 0.25rem; }
+
+  /* ── FOOTER ── */
+  .doc-footer {
+    background: var(--navy);
+    padding: 1.2rem 3.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .doc-footer-brand { font-family: var(--display); color: white; font-size: 1.1rem; font-weight: 700; }
+  .doc-footer-meta { font-family: var(--mono); font-size: 0.65rem; color: rgba(255,255,255,0.4); text-align: right; }
+
+  /* ── PRINT BUTTON ── */
+  .print-bar {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--red);
+    padding: 0.6rem 1rem;
+    display: flex; justify-content: center; align-items: center; gap: 1rem;
+    font-family: var(--mono); font-size: 0.75rem; color: white;
+  }
+
+  .print-bar button {
+    background: white; color: var(--red); border: none; cursor: pointer;
+    font-family: var(--mono); font-size: 0.7rem; font-weight: 700;
+    padding: 0.35rem 1rem; letter-spacing: 0.05em;
+  }
+
+  .print-bar button:hover { background: var(--red-light); }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.82em;
+    background: rgba(0,0,0,0.06);
+    padding: 0.1em 0.4em;
+    border-radius: 2px;
+    color: var(--navy);
+  }
+</style>
+</head>
+<body>
+
+<div class="print-bar no-print">
+  <span>VigiaBR — PRD v1.0 — Documento de Requisitos de Produto</span>
+  <button onclick="window.print()">⊞ Imprimir / Salvar PDF</button>
+</div>
+
+<div class="document">
+
+  <!-- CAPA -->
+  <div class="cover">
+    <div class="cover-noise"></div>
+    <div class="cover-lines"></div>
+    <div class="cover-accent"></div>
+
+    <div class="cover-badge">Documento Confidencial — v1.0</div>
+
+    <div class="cover-body">
+      <div class="cover-eyebrow">Product Requirements Document</div>
+      <div class="cover-title">Vigia<span>BR</span></div>
+      <div class="cover-subtitle">Sistema de Transparência e Consistência de Atos Públicos — Plataforma open-source para monitoramento de mandatários brasileiros em todos os níveis de governo</div>
+      <div class="cover-meta">
+        <div class="cover-meta-item">
+          <span class="cover-meta-label">Versão</span>
+          <span class="cover-meta-value">1.0.0</span>
+        </div>
+        <div class="cover-meta-item">
+          <span class="cover-meta-label">Status</span>
+          <span class="cover-meta-value">Em definição</span>
+        </div>
+        <div class="cover-meta-item">
+          <span class="cover-meta-label">Data</span>
+          <span class="cover-meta-value">Fevereiro 2026</span>
+        </div>
+        <div class="cover-meta-item">
+          <span class="cover-meta-label">Licença</span>
+          <span class="cover-meta-value">Open-Source</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CORPO -->
+  <div class="body-content">
+
+    <!-- TOC -->
+    <div class="toc">
+      <div class="toc-title">Sumário</div>
+      <ol>
+        <li><a href="#s1">Visão Geral do Produto</a></li>
+        <li><a href="#s2">Score de Consistência (SCI)</a></li>
+        <li><a href="#s3">Fontes de Dados</a></li>
+        <li><a href="#s4">Modelo de Dados — Grafo</a></li>
+        <li><a href="#s5">Linguagem de Apresentação</a></li>
+        <li><a href="#s6">Funcionalidades do Sistema</a></li>
+        <li><a href="#s7">Aspectos Legais e LGPD</a></li>
+        <li><a href="#s8">Arquitetura Técnica Open-Source</a></li>
+        <li><a href="#s9">Roadmap</a></li>
+      </ol>
+    </div>
+
+    <!-- SEÇÃO 1 -->
+    <div class="section" id="s1">
+      <div class="section-number">Seção 01</div>
+      <h1>Visão Geral do Produto</h1>
+
+      <p>O <strong>VigiaBR</strong> é uma plataforma 100% pública, gratuita e open-source de transparência e consistência de atos públicos. O sistema coleta, cruza e apresenta dados oficiais sobre mandatários brasileiros em todos os níveis (federal, estadual e municipal), gerando um <strong>Score de Consistência (SCI)</strong> baseado em evidências factuais e auditáveis.</p>
+
+      <div class="box box-principle">
+        <div class="box-label">Princípio Fundamental</div>
+        <p>O sistema <strong>NUNCA acusa, infere crime ou usa linguagem subjetiva</strong>. Apresenta apenas fatos documentados, fontes oficiais e inconsistências verificáveis entre dados públicos. A interpretação é sempre do usuário.</p>
+      </div>
+
+      <h2>1.1 Objetivos</h2>
+      <ul>
+        <li>Permitir que qualquer cidadão visualize de forma clara o histórico de atos públicos de um mandatário</li>
+        <li>Identificar automaticamente inconsistências entre dados oficiais distintos</li>
+        <li>Ser 100% gratuito, aberto, auditável e sem fins lucrativos</li>
+        <li>Fornecer trilha de evidências com links diretos para fontes primárias</li>
+      </ul>
+
+      <h2>1.2 Público-Alvo</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Perfil</th><th>Necessidade Principal</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Cidadão Comum</strong></td><td>Entender de forma simples o histórico do seu representante</td></tr>
+            <tr><td><strong>Jornalista Investigativo</strong></td><td>Cruzar dados rapidamente e exportar evidências com fontes</td></tr>
+            <tr><td><strong>ONGs e Pesquisadores</strong></td><td>Acessar dados estruturados e identificar padrões sistêmicos</td></tr>
+            <tr><td><strong>Advogados e Juristas</strong></td><td>Localizar documentos-fonte com links diretos para órgãos oficiais</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>1.3 Escopo de Cobertura</h2>
+      <ul>
+        <li><strong>MVP:</strong> Câmara Federal e Senado (dados mais estruturados e acessíveis)</li>
+        <li><strong>Fase 2:</strong> Deputados Estaduais e Distritais (ALE + CLDF)</li>
+        <li><strong>Fase 3:</strong> Vereadores de capitais</li>
+        <li><strong>Fase 4:</strong> Municípios em geral</li>
+      </ul>
+    </div>
+
+    <!-- SEÇÃO 2 -->
+    <div class="section page-break" id="s2">
+      <div class="section-number">Seção 02</div>
+      <h1>Score de Consistência — SCI</h1>
+
+      <p>O <strong>Score de Consistência VigiaBR (SCI)</strong> é um índice numérico de <strong>0 a 1000 pontos</strong> que representa o grau de consistência entre os atos públicos de um mandatário e as bases de dados oficiais. Funciona de forma análoga ao Serasa Score: começa em 1000 e deduz pontos conforme inconsistências são detectadas.</p>
+
+      <div class="sci-bar">
+        <div class="s-red">0–299</div>
+        <div class="s-orange">300–499</div>
+        <div class="s-yellow">500–799</div>
+        <div class="s-green">800–1000</div>
+      </div>
+      <div class="sci-labels">
+        <span>Inconsistência Elevada</span>
+        <span>Baixa</span>
+        <span>Média</span>
+        <span>Alta Consistência</span>
+      </div>
+
+      <h2>2.1 Dimensões de Análise</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Dimensão</th><th>Peso</th><th>Dedução Máx.</th><th>Fonte</th></tr></thead>
+          <tbody>
+            <tr><td>Evolução patrimonial vs renda pública</td><td>25%</td><td>−250 pts</td><td>TSE + Portal Transparência</td></tr>
+            <tr><td>Voto × setor do doador (correlação temporal)</td><td>20%</td><td>−200 pts</td><td>Câmara + TSE</td></tr>
+            <tr><td>Empresa de familiar recebeu contrato gov.</td><td>20%</td><td>−200 pts</td><td>Receita Federal + Transparência</td></tr>
+            <tr><td>Emenda × beneficiário com vínculo pessoal/empresarial</td><td>15%</td><td>−150 pts</td><td>Transparência + CNPJ</td></tr>
+            <tr><td>Contratações no gabinete com vínculos familiares</td><td>12%</td><td>−120 pts</td><td>Câmara/Senado + CPF hash</td></tr>
+            <tr><td>Mudança de voto após doação (análise temporal)</td><td>8%</td><td>−80 pts</td><td>Câmara + TSE</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>2.2 Score Contextualizado</h2>
+      <p>O SCI é <strong>relativo ao histórico individual</strong> — o sistema considera o contexto antes de deduzir pontos:</p>
+      <ul>
+        <li>Mandatário rico antes do mandato: patrimônio alto não deduz pontos se crescimento é proporcional à linha de base pré-eleição</li>
+        <li>Familiar contratado antes do mandato: registrado, mas peso reduzido (pré-existente ao mandato)</li>
+        <li>Doador do mesmo setor de atuação profissional anterior: peso contextualizado</li>
+      </ul>
+
+      <h2>2.3 Modelo de Cálculo</h2>
+      <p>O SCI é calculado por <strong>Machine Learning supervisionado</strong> com pesos dinâmicos — inicialmente definidos manualmente e calibrados progressivamente com dados históricos. A ferramenta open-source utilizada será <code>scikit-learn</code> (Python), com modelos XGBoost para detecção de anomalias.</p>
+    </div>
+
+    <!-- SEÇÃO 3 -->
+    <div class="section page-break" id="s3">
+      <div class="section-number">Seção 03</div>
+      <h1>Fontes de Dados</h1>
+
+      <p>Todas as fontes são <strong>100% públicas, oficiais e gratuitas</strong>. Nenhum dado privado ou obtido por meios não-oficiais é utilizado. Frequência de atualização: <strong>diária para todas as fontes</strong> (exceto TSE, por eleição, e Receita Federal, mensal).</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Fonte</th><th>Dados Coletados</th><th>Endpoint</th><th>Freq.</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Câmara dos Deputados</strong></td><td>Votações nominais, CEAP, PLs, presenças, frentes</td><td>dadosabertos.camara.leg.br</td><td>Diária</td></tr>
+            <tr><td><strong>Senado Federal</strong></td><td>Votações, PLs, comissões, gastos de gabinete</td><td>legis.senado.leg.br/dadosabertos</td><td>Diária</td></tr>
+            <tr><td><strong>TSE — Dados Abertos</strong></td><td>Patrimônio declarado (2004–hoje), doações de campanha, gastos eleitorais</td><td>dadosabertos.tse.jus.br</td><td>Por eleição</td></tr>
+            <tr><td><strong>Portal Transparência / CGU</strong></td><td>Emendas parlamentares, contratos federais, CEIS, sanções, cartões corporativos</td><td>portaldatransparencia.gov.br/api-de-dados</td><td>Diária</td></tr>
+            <tr><td><strong>Receita Federal — CNPJ</strong></td><td>Quadro societário completo, histórico de sócios, CNAEs, situação cadastral</td><td>arquivos.receitafederal.gov.br/dados/cnpj/</td><td>Mensal</td></tr>
+            <tr><td><strong>Querido Diário (OKBR)</strong></td><td>Nomeações DAS, portarias, contratos publicados no DOU</td><td>queridodiario.ok.org.br</td><td>Diária</td></tr>
+            <tr><td><strong>CNJ — DataJud</strong></td><td>Processos judiciais públicos, improbidade, execuções fiscais</td><td>datajud.cnj.jus.br</td><td>Diária</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="box box-info">
+        <div class="box-label">Nota sobre CNPJ (Receita Federal)</div>
+        <p>O dump mensal tem ~85GB comprimido. A estratégia é converter para SQLite local (~30GB) para consultas eficientes sem depender de infraestrutura cara. Ferramentas open-source: <code>cnpja-dump</code> ou scripts Python customizados.</p>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 4 -->
+    <div class="section page-break" id="s4">
+      <div class="section-number">Seção 04</div>
+      <h1>Modelo de Dados — Grafo</h1>
+
+      <p>O banco de dados principal é um grafo <strong>Neo4j Community Edition</strong> (open-source). Essa escolha permite consultas de múltiplos graus de separação em Cypher, como: <em>"empresa cujo sócio é familiar de mandatário que recebeu doação de empresa contratante"</em>.</p>
+
+      <h2>4.1 Entidades (Nós)</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Label Neo4j</th><th>Propriedades Principais</th></tr></thead>
+          <tbody>
+            <tr><td><code>:Mandatario</code></td><td>id_tse, nome, cargo, uf, partido, mandato_inicio, mandato_fim, sci_score</td></tr>
+            <tr><td><code>:Partido</code></td><td>sigla, nome, numero_eleitoral</td></tr>
+            <tr><td><code>:PessoaFisica</code></td><td>nome, cpf_hash, tipo (Familiar|Assessor|Sócio|Doador)</td></tr>
+            <tr><td><code>:Empresa</code></td><td>cnpj, razao_social, cnae, situacao, data_abertura, capital_social</td></tr>
+            <tr><td><code>:BemPatrimonial</code></td><td>tipo, descricao, valor_declarado, ano_eleicao</td></tr>
+            <tr><td><code>:Emenda</code></td><td>numero, tipo, valor_pago, ano, funcao</td></tr>
+            <tr><td><code>:ContratoGov</code></td><td>numero, objeto, valor, orgao_contratante, data_assinatura</td></tr>
+            <tr><td><code>:Votacao</code></td><td>id, data, descricao, tipo_proposicao, resultado</td></tr>
+            <tr><td><code>:ProjetoLei</code></td><td>numero, ano, tipo, ementa, tema, situacao</td></tr>
+            <tr><td><code>:ProcessoJudicial</code></td><td>numero_cnj, tipo, tribunal, situacao, valor_causa</td></tr>
+            <tr><td><code>:Inconsistencia</code></td><td>tipo, descricao_neutra, metrica, score_impacto, fontes[], data_deteccao</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>4.2 Relacionamentos (Arestas)</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Relacionamento</th><th>Entre</th><th>Propriedades</th></tr></thead>
+          <tbody>
+            <tr><td><code>FILIADO_A</code></td><td>Mandatario → Partido</td><td>data_filiacao, data_desfiliacao</td></tr>
+            <tr><td><code>VOTOU</code></td><td>Mandatario → Votacao</td><td>voto (Sim|Não|Abstenção|Ausente), data</td></tr>
+            <tr><td><code>TEM_FAMILIAR</code></td><td>Mandatario → PessoaFisica</td><td>grau (Cônjuge|Filho|Irmão|Cunhado…)</td></tr>
+            <tr><td><code>CONTRATOU</code></td><td>Mandatario → PessoaFisica</td><td>cargo, salario, data_inicio, gabinete: bool</td></tr>
+            <tr><td><code>SOCIO_DE</code></td><td>PessoaFisica → Empresa</td><td>percentual_cotas, data_entrada, data_saida</td></tr>
+            <tr><td><code>DECLAROU_BEM</code></td><td>Mandatario → BemPatrimonial</td><td>ano_eleicao, valor_total_eleicao</td></tr>
+            <tr><td><code>RECEBEU_DOACAO</code></td><td>Mandatario ← Doacao</td><td>valor, data, eleicao_ano, origem (PF|PJ)</td></tr>
+            <tr><td><code>PROPS_EMENDA</code></td><td>Mandatario → Emenda</td><td>ano, valor_proposto</td></tr>
+            <tr><td><code>FIRMOU_CONTRATO</code></td><td>Empresa → ContratoGov</td><td>valor, objeto, modalidade_licitacao</td></tr>
+            <tr><td><code>REU_EM</code></td><td>Mandatario → ProcessoJudicial</td><td>desde, tipo_acao</td></tr>
+            <tr><td><code>GERA_INCONSISTENCIA</code></td><td>Qualquer nó → :Inconsistencia</td><td>score_impacto, detectado_em, fontes[]</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="box box-info">
+        <div class="box-label">Nó Especial — :Inconsistencia</div>
+        <p>Cada inconsistência detectada torna-se um nó próprio no grafo, conectado aos nós envolvidos. Isso permite rastrear quais entidades contribuem para o SCI e exibir a trilha de evidências completa ao usuário, mantendo cada fato 100% linkado à fonte primária.</p>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 5 -->
+    <div class="section page-break" id="s5">
+      <div class="section-number">Seção 05</div>
+      <h1>Linguagem de Apresentação</h1>
+
+      <p>A linguagem do VigiaBR segue um protocolo rígido: <strong>neutra, factual, baseada exclusivamente em dados oficiais</strong>. Palavras como "suspeito", "corrupto", "ilícito" ou qualquer termo que implique julgamento moral ou legal são estritamente proibidas.</p>
+
+      <h2>5.1 Padrão de Exibição — Card de Inconsistência</h2>
+      <p>Cada inconsistência é exibida em um card estruturado com destaque visual + três camadas de informação:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Camada</th><th>Conteúdo</th></tr></thead>
+          <tbody>
+            <tr><td><strong>FATO</strong></td><td>Descrição factual e neutra dos dados oficiais envolvidos</td></tr>
+            <tr><td><strong>MÉTRICA</strong></td><td>Indicador quantitativo calculado (correlação, variação, frequência)</td></tr>
+            <tr><td><strong>FONTE</strong></td><td>Link direto para os documentos oficiais (API, portal, PDF original)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>5.2 Exemplos de Linguagem</h2>
+
+      <div class="box box-forbidden">
+        <div class="box-label">❌ Proibido — Linguagem subjetiva</div>
+        <p>"O deputado X parece ter se beneficiado de doações para votar a favor de empresas farmacêuticas, o que pode caracterizar corrupção."</p>
+      </div>
+
+      <div class="box box-allowed">
+        <div class="box-label">✅ Permitido — Correlação voto × doador</div>
+        <p>"Entre 2019 e 2022, o Dep. X recebeu R$1,2M em doações de empresas do setor farmacêutico (Fonte: TSE). No mesmo período, votou favoravelmente em 9 de 10 propostas relacionadas ao setor (Fonte: Câmara). Correlação temporal: 90%."</p>
+      </div>
+
+      <div class="box box-allowed">
+        <div class="box-label">✅ Permitido — Vínculo familiar em cargo</div>
+        <p>"Em 15/01/2023, Carlos Matos (filho do Dep. X, conforme declaração de bens TSE 2022) foi registrado como Assessor Especial do gabinete do Dep. X (Fonte: Portal Transparência). Remuneração: R$18.000/mês."</p>
+      </div>
+
+      <div class="box box-allowed">
+        <div class="box-label">✅ Permitido — Enriquecimento patrimonial</div>
+        <p>"Entre a declaração de 2014 e 2022, o patrimônio declarado do Dep. X cresceu 340% (de R$420k para R$1,85M). A remuneração pública acumulada no período foi de R$480k. Variação não justificada por rendimentos públicos: R$950k. (Fontes: TSE 2014 e TSE 2022)"</p>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 6 -->
+    <div class="section page-break" id="s6">
+      <div class="section-number">Seção 06</div>
+      <h1>Funcionalidades do Sistema</h1>
+
+      <h2>6.1 Perfil do Mandatário</h2>
+      <ul>
+        <li>Score SCI exibido com destaque visual (banda de cor + pontuação numérica)</li>
+        <li>Linha do tempo cronológica de todos os atos públicos (legislativos, financeiros, judiciais)</li>
+        <li>Cards de inconsistência com destaque visual + métrica + link para fonte</li>
+        <li>Evolução patrimonial comparada entre eleições (gráfico de linha)</li>
+        <li>Grafo de relacionamentos interativo</li>
+        <li>Exportação de dados em PDF e JSON com trilha de fontes</li>
+      </ul>
+
+      <h2>6.2 Visão de Clã Familiar</h2>
+      <p>Quando dois ou mais mandatários possuem vínculo familiar entre si, o sistema oferece uma visão agregada:</p>
+      <ul>
+        <li>Grafo conjunto mostrando vínculos entre os membros do clã</li>
+        <li>Score SCI individual de cada membro no mesmo painel</li>
+        <li>Fluxo de recursos públicos dentro do clã (emendas, contratos, cargos)</li>
+        <li>Linha do tempo sobreposta dos mandatos de todos os membros</li>
+      </ul>
+
+      <h2>6.3 Comparação entre Mandatários</h2>
+      <ul>
+        <li>Comparação lado a lado de scores e inconsistências</li>
+        <li>Ranking geral por SCI, com filtros por partido, estado e cargo</li>
+        <li>Filtros por tipo de inconsistência, valor e período</li>
+      </ul>
+
+      <h2>6.4 Atualização de Dados</h2>
+      <ul>
+        <li>Pipeline diário automatizado (Apache Airflow) para todas as fontes</li>
+        <li>Score SCI recalculado após cada ciclo de ingestão</li>
+        <li>Histórico de scores auditável — variações ficam registradas</li>
+      </ul>
+    </div>
+
+    <!-- SEÇÃO 7 -->
+    <div class="section page-break" id="s7">
+      <div class="section-number">Seção 07</div>
+      <h1>Aspectos Legais e LGPD</h1>
+
+      <div class="box box-principle">
+        <div class="box-label">Base Legal</div>
+        <p>Todos os dados utilizados são dados públicos de agentes públicos no exercício de suas funções, amparados pelo princípio constitucional da publicidade (Art. 37, CF/88) e pela Lei de Acesso à Informação (Lei 12.527/2011). A LGPD (Lei 13.709/2018) prevê exceções para dados necessários ao exercício de direitos e ao interesse público (Art. 7º, II e III).</p>
+      </div>
+
+      <h2>7.1 Medidas de Proteção Adotadas</h2>
+      <ul>
+        <li>CPF de terceiros (familiares, assessores) armazenado apenas como hash irreversível (SHA-256 com salt)</li>
+        <li>Nenhum dado sensível de pessoa física privada é exibido ao usuário</li>
+        <li>Todas as inferências baseadas exclusivamente em dados oficiais públicos</li>
+        <li>Score apresentado como índice de consistência, não como julgamento de conduta</li>
+        <li>Linguagem estritamente neutra — sem acusação, implicação ou julgamento</li>
+        <li>Fontes citadas diretamente — o usuário pode verificar cada dado de forma independente</li>
+        <li>Política de privacidade e termos de uso públicos no repositório e no site</li>
+      </ul>
+
+      <h2>7.2 Responsabilidade por Inferência</h2>
+      <p>O sistema não produz inferências sobre intenção, motivação ou ilegalidade. O SCI mede exclusivamente consistência entre dados oficiais. Os termos de uso deixarão isso explícito. O código open-source também permite auditoria pública de como cada score é calculado.</p>
+
+      <h2>7.3 Vantagem do Open-Source para LGPD</h2>
+      <p>A abertura do código é também uma proteção legal: qualquer interessado pode auditar a metodologia, verificar que não há inferências indevidas e confirmar que os dados são tratados exclusivamente de fontes oficiais. Isso reduz significativamente o risco de questionamentos sobre uso indevido de dados.</p>
+    </div>
+
+    <!-- SEÇÃO 8 -->
+    <div class="section page-break" id="s8">
+      <div class="section-number">Seção 08</div>
+      <h1>Arquitetura Técnica — 100% Open-Source</h1>
+
+      <p>Toda a stack é open-source, priorizando custo zero de licenciamento e hospedagem econômica em VPS ou servidores próprios.</p>
+
+      <div class="stack-grid">
+        <div class="stack-card">
+          <div class="stack-card-layer">Coleta de Dados</div>
+          <div class="stack-card-tech">Python + Scrapy</div>
+          <div class="stack-card-desc">Scrapers para APIs públicas, download de dumps CSV e parsing de PDFs do DOU</div>
+          <span class="stack-card-oss">MIT / BSD</span>
+        </div>
+        <div class="stack-card">
+          <div class="stack-card-layer">Orquestração de Pipeline</div>
+          <div class="stack-card-tech">Apache Airflow</div>
+          <div class="stack-card-desc">DAGs para pipelines diários, controle de falhas e reprocessamento</div>
+          <span class="stack-card-oss">Apache 2.0</span>
+        </div>
+        <div class="stack-card">
+          <div class="stack-card-layer">Banco de Grafos</div>
+          <div class="stack-card-tech">Neo4j Community</div>
+          <div class="stack-card-desc">Grafo de entidades e relacionamentos, queries Cypher</div>
+          <span class="stack-card-oss">GPL 3.0</span>
+        </div>
+        <div class="stack-card">
+          <div class="stack-card-layer">Banco Relacional</div>
+          <div class="stack-card-tech">PostgreSQL</div>
+          <div class="stack-card-desc">Dados tabulares, histórico de scores, logs de ingestão</div>
+          <span class="stack-card-oss">PostgreSQL License</span>
+        </div>
+        <div class="stack-card">
+          <div class="stack-card-layer">Machine Learning</div>
+          <div class="stack-card-tech">scikit-learn + XGBoost</div>
+          <div class="stack-card-desc">Cálculo e calibração dinâmica do SCI, detecção de anomalias</div>
+          <span class="stack-card-oss">BSD / Apache 2.0</span>
+        </div>
+        <div class="stack-card">
+          <div class="stack-card-layer">NLP / LLM</div>
+          <div class="stack-card-tech">Ollama + Mistral</div>
+          <div class="stack-card-desc">Análise de discursos, textos do DOU e classificação de temas de PLs — executado localmente, sem API paga</div>
+          <span class="stack-card-oss">MIT / Apache 2.0</span>
+        </div>
+        <div class="stack-card">
+          <div class="stack-card-layer">API Backend</div>
+          <div class="stack-card-tech">FastAPI + Python</div>
+          <div class="stack-card-desc">Endpoints REST para o frontend e para a API pública de pesquisadores</div>
+          <span class="stack-card-oss">MIT</span>
+        </div>
+        <div class="stack-card">
+          <div class="stack-card-layer">Frontend</div>
+          <div class="stack-card-tech">Next.js + React</div>
+          <div class="stack-card-desc">Interface pública, grafo interativo (vis.js ou D3.js), dashboard de rankings</div>
+          <span class="stack-card-oss">MIT</span>
+        </div>
+        <div class="stack-card">
+          <div class="stack-card-layer">Grafo Visual</div>
+          <div class="stack-card-tech">Cytoscape.js</div>
+          <div class="stack-card-desc">Renderização do grafo de relacionamentos no browser, sem dependência de servidor Neo4j no front</div>
+          <span class="stack-card-oss">MIT</span>
+        </div>
+        <div class="stack-card">
+          <div class="stack-card-layer">Infraestrutura</div>
+          <div class="stack-card-tech">Docker + Caddy</div>
+          <div class="stack-card-desc">Containers auto-gerenciados, HTTPS automático via Caddy (substitui Nginx + Certbot)</div>
+          <span class="stack-card-oss">Apache 2.0 / MIT</span>
+        </div>
+        <div class="stack-card">
+          <div class="stack-card-layer">Monitoramento</div>
+          <div class="stack-card-tech">Grafana + Prometheus</div>
+          <div class="stack-card-desc">Métricas de pipeline, uptime e alertas de falha na ingestão</div>
+          <span class="stack-card-oss">AGPL / Apache 2.0</span>
+        </div>
+        <div class="stack-card">
+          <div class="stack-card-layer">CNPJ Local</div>
+          <div class="stack-card-tech">SQLite + DuckDB</div>
+          <div class="stack-card-desc">Dump mensal da Receita Federal convertido para consulta local eficiente — sem custo de cloud</div>
+          <span class="stack-card-oss">Public Domain / MIT</span>
+        </div>
+      </div>
+
+      <div class="box box-info">
+        <div class="box-label">Estimativa de Custo de Infraestrutura</div>
+        <p>Com toda a stack open-source em um VPS dedicado (ex: Hetzner CPX51 ~€40/mês), o custo total estimado de infra para o MVP federal é de <strong>R$200–400/mês</strong>. Não há licenças pagas. O único custo variável é armazenamento para os dumps da Receita Federal (~200GB/ano).</p>
+      </div>
+
+      <div class="box box-principle">
+        <div class="box-label">Repositório e Licença do Projeto</div>
+        <p>Todo o código será publicado no GitHub sob licença <strong>AGPL-3.0</strong> — garante que qualquer fork que ofereça o serviço também deva ser open-source, protegendo o projeto de apropriação comercial.</p>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 9 -->
+    <div class="section page-break" id="s9">
+      <div class="section-number">Seção 09</div>
+      <h1>Roadmap</h1>
+
+      <div class="roadmap">
+        <div class="roadmap-item">
+          <div class="roadmap-phase">
+            <span class="roadmap-phase-label">Fase</span>
+            <span>MVP</span>
+            <span class="roadmap-period">Mês 1–3</span>
+          </div>
+          <div class="roadmap-body">
+            <div class="roadmap-deliverables">Pipeline de dados federais (Câmara + Senado + TSE + Transparência). Score SCI básico com pesos fixos. Perfil individual com linha do tempo. Cards de inconsistência. Deploy em VPS com Docker.</div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-phase">
+            <span class="roadmap-phase-label">Fase</span>
+            <span>2</span>
+            <span class="roadmap-period">Mês 4–6</span>
+          </div>
+          <div class="roadmap-body">
+            <div class="roadmap-deliverables">Grafo de relacionamentos interativo (Cytoscape.js). Visão de clã familiar. Integração CNPJ completa (Receita Federal via SQLite/DuckDB). Score SCI com ML dinâmico (scikit-learn). NLP local com Ollama para discursos e DOU.</div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-phase">
+            <span class="roadmap-phase-label">Fase</span>
+            <span>3</span>
+            <span class="roadmap-period">Mês 7–9</span>
+          </div>
+          <div class="roadmap-body">
+            <div class="roadmap-deliverables">Expansão para Deputados Estaduais (ALEs). Comparação e ranking entre mandatários. Exportação de relatórios (PDF e JSON com fontes). API pública REST para pesquisadores e jornalistas.</div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-phase">
+            <span class="roadmap-phase-label">Fase</span>
+            <span>4</span>
+            <span class="roadmap-period">Mês 10–12</span>
+          </div>
+          <div class="roadmap-body">
+            <div class="roadmap-deliverables">Expansão para Vereadores de capitais. App mobile (React Native). Integração com sistemas estaduais de transparência. Comunidade open-source ativa com contribuidores externos.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end body-content -->
+
+  <!-- FOOTER -->
+  <div class="doc-footer">
+    <div class="doc-footer-brand">VigiaBR</div>
+    <div class="doc-footer-meta">
+      PRD v1.0 — Fevereiro 2026<br>
+      Transparência é um direito, não um privilégio.
+    </div>
+  </div>
+
+</div><!-- end document -->
+
+</body>
+</html>

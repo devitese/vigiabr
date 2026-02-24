@@ -4,7 +4,7 @@
 services:
   postgres:
     ports:
-      - "5432:5432"
+      - "${PG_PORT:-5433}:5432"
     environment:
       POSTGRES_USER: vigiabr
       POSTGRES_PASSWORD: vigiabr
@@ -22,8 +22,8 @@ services:
 
   neo4j:
     ports:
-      - "7474:7474"
-      - "7687:7687"
+      - "${NEO4J_HTTP_PORT:-7474}:7474"
+      - "${NEO4J_BOLT_PORT:-7687}:7687"
     environment:
       NEO4J_AUTH: neo4j/vigiabr
       NEO4J_server_memory_heap_initial__size: 256m
@@ -31,7 +31,7 @@ services:
 
   airflow-webserver:
     ports:
-      - "8080:8080"
+      - "${AIRFLOW_PORT:-8080}:8080"
     environment:
       AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
@@ -43,11 +43,11 @@ services:
 
   prometheus:
     ports:
-      - "9090:9090"
+      - "${PROMETHEUS_PORT:-9090}:9090"
 
   grafana:
     ports:
-      - "3000:3000"
+      - "${GRAFANA_PORT:-3001}:3000"
     environment:
       GF_SECURITY_ADMIN_PASSWORD: vigiabr
       GF_AUTH_ANONYMOUS_ENABLED: "true"

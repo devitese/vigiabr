@@ -135,14 +135,6 @@ Key relationships: `FILIADO_A`, `VOTOU`, `TEM_FAMILIAR`, `CONTRATOU`, `SOCIO_DE`
 - The PRD is at `VigiaBR-PRD-v1.0.html` — consult it for detailed specifications
 - Create GitHub Issue before creating a branch — reference issue number in branch name
 
-## Agent Orchestrator
-
-This repo uses an agent-orchestrator (`ao`) for managing parallel worker sessions:
-- Config: `agent-orchestrator.yaml`
-- Default branch: `develop`
-- Sessions use tmux with git worktrees (`~/.worktrees/`)
-- Dashboard available at `localhost:3001`
-
 ## Phased Rollout
 
 - **MVP (Phase 1)**: Federal Congress only (Camara + Senado) -- pipelines, basic SCI, profiles, inconsistency cards

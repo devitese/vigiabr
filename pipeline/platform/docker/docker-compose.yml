@@ -46,7 +46,7 @@ services:
       timeout: 5s
       retries: 5
     ports:
-      - "${PG_PORT:-5432}:5432"
+      - "${PG_PORT:-5433}:5432"
 
   neo4j:
     image: neo4j:5-community
