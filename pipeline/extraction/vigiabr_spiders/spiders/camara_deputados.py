@@ -26,6 +26,7 @@ class CamaraDeputadosSpider(scrapy.Spider):
 
     custom_settings = {
         "DOWNLOAD_DELAY": 0.5,
+        "DEFAULT_REQUEST_HEADERS": {"Accept": "application/json"},
     }
 
     def start_requests(self) -> Iterator[scrapy.Request]:
