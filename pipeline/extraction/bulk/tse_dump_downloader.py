@@ -79,7 +79,7 @@ def _clean(value: str | None) -> str | None:
     if not value:
         return None
     v = value.strip().strip('"')
-    if v in ("", "#NULO#", "#NE#", "-1"):
+    if v in ("", "#NULO#", "#NULO", "#NE#", "#NE", "-1"):
         return None
     return v
 

@@ -54,7 +54,7 @@ CREATE TABLE bens_patrimoniais (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     mandatario_id           UUID REFERENCES mandatarios(id),
     mandatario_id_externo   VARCHAR(20),
-    tipo                    VARCHAR(100) NOT NULL,
+    tipo                    TEXT NOT NULL,
     descricao               TEXT,
     valor_declarado         NUMERIC(18,2) NOT NULL,
     ano_eleicao             INTEGER NOT NULL,

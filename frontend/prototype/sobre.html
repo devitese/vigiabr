@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sobre — VigiaBR</title>
+  <meta name="description" content="Metodologia, fontes de dados e aspectos legais da plataforma VigiaBR.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <a href="#main" class="sr-only" style="position:absolute;top:0;left:0;background:var(--red);color:white;padding:0.5rem 1rem;z-index:999;">Pular para o conteudo</a>
+
+  <!-- Navigation -->
+  <nav class="nav" role="navigation" aria-label="Principal">
+    <div class="container">
+      <a href="index.html" class="nav-brand">Vigia<span>BR</span></a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Inicio</a></li>
+        <li><a href="sobre.html" class="active">Sobre</a></li>
+        <li><a href="https://github.com/vigiabr" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+        <li class="nav-search">
+          <span class="nav-search-icon">&#x1F50D;</span>
+          <input type="search" placeholder="Buscar mandatario..." aria-label="Buscar mandatario">
+        </li>
+      </ul>
+      <button class="nav-hamburger" aria-label="Abrir menu" onclick="document.getElementById('navLinks').classList.toggle('open')">&#9776;</button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main id="main" class="page-content">
+    <div class="about-content">
+
+      <div class="section-label">Sobre</div>
+      <h1>O que e o VigiaBR</h1>
+
+      <p>O VigiaBR e uma plataforma aberta e gratuita de monitoramento da consistencia de mandatarios brasileiros. A plataforma coleta exclusivamente dados publicos oficiais, calcula um indice de consistencia entre registros distintos, e apresenta os resultados com trilha completa de evidencias e links para as fontes primarias.</p>
+
+      <p>O VigiaBR nao acusa, nao infere e nao julga. Apresenta fatos, metricas e fontes. Cada dado exibido possui link direto para o portal oficial de onde foi extraido, permitindo verificacao independente por qualquer cidadao.</p>
+
+      <div class="info-box">
+        <div class="info-box-label">Principio Fundamental</div>
+        <p>O VigiaBR apresenta exclusivamente: <strong>FATO</strong> (descricao factual e neutra dos dados oficiais), <strong>METRICA</strong> (indicador quantitativo calculado), e <strong>FONTE</strong> (link direto para documentos oficiais). Nenhuma interpretacao, julgamento ou acusacao e produzida pelo sistema.</p>
+      </div>
+
+      <!-- Methodology -->
+      <h2 id="metodologia">Metodologia — Score de Consistencia (SCI)</h2>
+
+      <p>O Score de Consistencia (SCI) e um indice de 0 a 1000 que mede a consistencia entre diferentes registros publicos oficiais de um mandatario. O score inicia em 1000 e sofre deducoes quando inconsistencias sao detectadas entre fontes independentes.</p>
+
+      <p>O SCI nao mede honestidade, competencia ou qualidade de um mandatario. Mede exclusivamente a consistencia entre dados oficiais publicos. Um score baixo indica que existem divergencias significativas entre registros oficiais que merecem atencao publica.</p>
+
+      <h3>Dimensoes de Analise</h3>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Dimensao</th>
+            <th>Descricao</th>
+            <th>Fontes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Patrimonio vs Renda</strong></td>
+            <td>Compara a evolucao patrimonial declarada ao TSE com a remuneracao publica acumulada no periodo</td>
+            <td>TSE (bens de candidato) + Portal Transparencia (remuneracao)</td>
+          </tr>
+          <tr>
+            <td><strong>Voto x Setor Doador</strong></td>
+            <td>Correlacao temporal entre votos em propostas setoriais e doacoes recebidas de empresas do mesmo setor</td>
+            <td>Camara/Senado (votacoes) + TSE (doacoes de campanha)</td>
+          </tr>
+          <tr>
+            <td><strong>Contrato Familiar</strong></td>
+            <td>Identificacao de contratos governamentais firmados com empresas cujos socios possuem vinculo familiar com o mandatario</td>
+            <td>Receita Federal (CNPJ/QSA) + Portal Transparencia (contratos)</td>
+          </tr>
+          <tr>
+            <td><strong>Emenda x Vinculo</strong></td>
+            <td>Cruzamento entre emendas parlamentares e beneficiarios com vinculo pessoal ou empresarial com o mandatario</td>
+            <td>Portal Transparencia (emendas) + Receita Federal (CNPJ)</td>
+          </tr>
+          <tr>
+            <td><strong>Gabinete Familiar</strong></td>
+            <td>Identificacao de contratacoes no gabinete parlamentar de pessoas com vinculo familiar</td>
+            <td>Camara/Senado (contratacoes) + CPF hash</td>
+          </tr>
+          <tr>
+            <td><strong>Voto Pos-Doacao</strong></td>
+            <td>Analise temporal de mudancas no padrao de votacao apos recebimento de doacoes de campanha</td>
+            <td>Camara/Senado (votacoes) + TSE (doacoes)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Modelo de Calculo</h3>
+
+      <p>O score e calculado pela formula: <strong>SCI = 1000 - soma(deducoes)</strong>, limitado ao intervalo [0, 1000]. Cada dimensao pode gerar deducoes de 0 a 250 pontos, proporcionais a gravidade da inconsistencia detectada. Os pesos de cada dimensao estao em fase de calibracao por analise estatistica.</p>
+
+      <h3>Faixas do Score</h3>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Faixa</th>
+            <th>Pontuacao</th>
+            <th>Significado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong style="color: #27ae60;">Alto</strong></td>
+            <td>751 — 1000</td>
+            <td>Alta consistencia entre registros oficiais</td>
+          </tr>
+          <tr>
+            <td><strong style="color: #b8860b;">Moderado</strong></td>
+            <td>501 — 750</td>
+            <td>Consistencia moderada, com algumas divergencias</td>
+          </tr>
+          <tr>
+            <td><strong style="color: #e67e22;">Baixo</strong></td>
+            <td>251 — 500</td>
+            <td>Consistencia baixa, divergencias significativas detectadas</td>
+          </tr>
+          <tr>
+            <td><strong style="color: #c0392b;">Critico</strong></td>
+            <td>0 — 250</td>
+            <td>Consistencia critica, multiplas divergencias graves</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Data Sources -->
+      <h2>Fontes de Dados</h2>
+
+      <p>Todos os dados utilizados pelo VigiaBR sao publicos, oficiais e acessiveis por qualquer cidadao. As fontes sao consultadas automaticamente por meio de APIs abertas e downloads de bases publicas.</p>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Fonte</th>
+            <th>Dados Coletados</th>
+            <th>Frequencia</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong><a href="https://dadosabertos.camara.leg.br" target="_blank" rel="noopener noreferrer">Camara dos Deputados</a></strong></td>
+            <td>Votacoes nominais, despesas CEAP, projetos de lei, presencas</td>
+            <td>Diaria</td>
+          </tr>
+          <tr>
+            <td><strong><a href="https://legis.senado.leg.br/dadosabertos" target="_blank" rel="noopener noreferrer">Senado Federal</a></strong></td>
+            <td>Votacoes, projetos de lei, comissoes, gastos de gabinete</td>
+            <td>Diaria</td>
+          </tr>
+          <tr>
+            <td><strong><a href="https://dadosabertos.tse.jus.br" target="_blank" rel="noopener noreferrer">TSE — Dados Abertos</a></strong></td>
+            <td>Patrimonio declarado (2004-hoje), doacoes de campanha, gastos eleitorais</td>
+            <td>Por eleicao</td>
+          </tr>
+          <tr>
+            <td><strong><a href="https://portaldatransparencia.gov.br/api-de-dados" target="_blank" rel="noopener noreferrer">Portal Transparencia / CGU</a></strong></td>
+            <td>Emendas parlamentares, contratos federais, sancoes, cartoes corporativos</td>
+            <td>Diaria</td>
+          </tr>
+          <tr>
+            <td><strong><a href="https://arquivos.receitafederal.gov.br/dados/cnpj/" target="_blank" rel="noopener noreferrer">Receita Federal — CNPJ</a></strong></td>
+            <td>Quadro societario completo, historico de socios, CNAEs, situacao cadastral</td>
+            <td>Mensal</td>
+          </tr>
+          <tr>
+            <td><strong><a href="https://queridodiario.ok.org.br" target="_blank" rel="noopener noreferrer">Querido Diario (OKBR)</a></strong></td>
+            <td>Nomeacoes DAS, portarias, contratos publicados no DOU</td>
+            <td>Diaria</td>
+          </tr>
+          <tr>
+            <td><strong><a href="https://datajud.cnj.jus.br" target="_blank" rel="noopener noreferrer">CNJ — DataJud</a></strong></td>
+            <td>Processos judiciais publicos, improbidade, execucoes fiscais</td>
+            <td>Diaria</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Legal -->
+      <h2 id="legal">Aspectos Legais e LGPD</h2>
+
+      <div class="info-box">
+        <div class="info-box-label">Base Legal</div>
+        <p>Todos os dados utilizados sao dados publicos de agentes publicos no exercicio de suas funcoes, amparados pelo principio constitucional da publicidade (Art. 37, CF/88) e pela Lei de Acesso a Informacao (Lei 12.527/2011). A LGPD (Lei 13.709/2018) preve excecoes para dados necessarios ao exercicio de direitos e ao interesse publico (Art. 7, II e III).</p>
+      </div>
+
+      <h3>Medidas de Protecao Adotadas</h3>
+      <ul>
+        <li>CPF de terceiros (familiares, assessores) armazenado apenas como hash irreversivel (SHA-256)</li>
+        <li>Nenhum dado sensivel de pessoa fisica privada e exibido ao usuario</li>
+        <li>Todas as inferencias baseadas exclusivamente em dados oficiais publicos</li>
+        <li>Score apresentado como indice de consistencia, nao como julgamento de conduta</li>
+        <li>Linguagem estritamente neutra — sem acusacao, implicacao ou julgamento</li>
+        <li>Fontes citadas diretamente — o usuario pode verificar cada dado de forma independente</li>
+        <li>Politica de privacidade e termos de uso publicos no repositorio e no site</li>
+      </ul>
+
+      <h3>Responsabilidade por Inferencia</h3>
+      <p>O sistema nao produz inferencias sobre intencao, motivacao ou ilegalidade. O SCI mede exclusivamente consistencia entre dados oficiais. Os termos de uso deixam isso explicito. O codigo open-source tambem permite auditoria publica de como cada score e calculado.</p>
+
+      <!-- Open Source -->
+      <h2>Codigo Aberto</h2>
+
+      <p>O VigiaBR e 100% open-source, publicado sob licenca <strong>AGPL-3.0</strong>. Isso significa que qualquer pessoa pode auditar o codigo, verificar a metodologia, e confirmar que nenhuma inferencia indevida e feita. Qualquer fork que oferecer o servico ao publico tambem deve ser open-source.</p>
+
+      <p>A abertura do codigo e tambem uma protecao legal: reduz significativamente o risco de questionamentos sobre uso indevido de dados, ja que qualquer interessado pode auditar exatamente como cada dado e coletado, processado e apresentado.</p>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Camada</th>
+            <th>Tecnologia</th>
+            <th>Licenca</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Coleta de Dados</strong></td>
+            <td>Python + Scrapy</td>
+            <td>MIT / BSD</td>
+          </tr>
+          <tr>
+            <td><strong>Orquestracao</strong></td>
+            <td>Apache Airflow</td>
+            <td>Apache 2.0</td>
+          </tr>
+          <tr>
+            <td><strong>Banco de Grafos</strong></td>
+            <td>Neo4j Community</td>
+            <td>GPL 3.0</td>
+          </tr>
+          <tr>
+            <td><strong>Banco Relacional</strong></td>
+            <td>PostgreSQL</td>
+            <td>PostgreSQL License</td>
+          </tr>
+          <tr>
+            <td><strong>Backend API</strong></td>
+            <td>FastAPI + Python</td>
+            <td>MIT</td>
+          </tr>
+          <tr>
+            <td><strong>Frontend</strong></td>
+            <td>Next.js + React</td>
+            <td>MIT</td>
+          </tr>
+          <tr>
+            <td><strong>Infraestrutura</strong></td>
+            <td>Docker + Caddy</td>
+            <td>Apache 2.0 / MIT</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Contact / Contribute -->
+      <h2>Contribua</h2>
+
+      <p>O VigiaBR e mantido por voluntarios e aceita contribuicoes de qualquer pessoa. Se voce e desenvolvedor, cientista de dados, jornalista ou cidadao interessado em transparencia publica, acesse o repositorio no GitHub e veja como contribuir.</p>
+
+      <ul>
+        <li><a href="https://github.com/vigiabr" target="_blank" rel="noopener noreferrer">Repositorio no GitHub</a> — codigo-fonte, issues e documentacao</li>
+        <li><a href="https://github.com/vigiabr/vigiabr/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Guia de Contribuicao</a> — como reportar bugs, sugerir melhorias e enviar pull requests</li>
+        <li><a href="https://github.com/vigiabr/vigiabr/issues" target="_blank" rel="noopener noreferrer">Issues</a> — reportar problemas ou sugerir funcionalidades</li>
+      </ul>
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="footer-brand">Vigia<span>BR</span></div>
+          <div class="footer-tagline">Transparencia e um direito, nao um privilegio.</div>
+        </div>
+        <div>
+          <div class="footer-heading">Navegacao</div>
+          <ul class="footer-links">
+            <li><a href="index.html">Inicio</a></li>
+            <li><a href="sobre.html">Sobre</a></li>
+            <li><a href="#metodologia">Metodologia</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-heading">Legal</div>
+          <ul class="footer-links">
+            <li><a href="https://github.com/vigiabr" target="_blank" rel="noopener noreferrer">Codigo-fonte (GitHub)</a></li>
+            <li><a href="#legal">Aspectos legais</a></li>
+            <li><a href="#">Licenca AGPL-3.0</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        VigiaBR &copy; 2026 &middot; Dados publicos oficiais &middot; Codigo aberto sob AGPL-3.0
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

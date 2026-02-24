@@ -150,34 +150,45 @@ uv run ruff format --check .
 
 ```
 vigiabr/
-├── CLAUDE.md                 # Configuracao do assistente de IA
-├── CONTRIBUTING.md            # Este arquivo
-├── VigiaBR-PRD-v1.0.html     # Documento de Requisitos do Produto
-├── docs/
-│   └── plans/                # Documentos de design e planejamento
-├── pipeline/
+├── pipeline/                 # Pipeline de dados (implementado)
 │   ├── pyproject.toml        # Definicao raiz do workspace (uv)
 │   ├── uv.lock               # Dependencias travadas
 │   ├── schemas/              # Schemas de banco, modelos Pydantic, tipos compartilhados
-│   │   ├── models/           # Modelos SQLAlchemy + Pydantic
-│   │   ├── pii/              # Utilitarios de hash SHA-256 para PII
-│   │   ├── alembic/          # Migracoes PostgreSQL
-│   │   └── tests/
 │   ├── extraction/           # Spiders Scrapy e downloaders em massa
-│   │   ├── vigiabr_spiders/  # Modulos de spider Scrapy
-│   │   ├── bulk/             # Downloaders de arquivos em massa (ex: dump CNPJ)
-│   │   └── tests/
-│   ├── processing/           # Etapas de transformacao, validacao e carga
-│   │   ├── processing/       # Codigo-fonte do modulo de processamento
-│   │   └── tests/
+│   ├── processing/           # Transformacao, analise, validacao e carga
+│   │   └── processing/
+│   │       ├── transformers/ # JSON bruto → modelos Pydantic
+│   │       ├── analyzers/    # Deteccao de anomalias (Benford, HHI, valores redondos)
+│   │       ├── validators/   # Dedup, hash de PII
+│   │       └── loaders/      # Upsert em lote PostgreSQL, Neo4j, DuckDB
 │   ├── contracts/            # Contratos de dados (DDL, constraints Cypher, docs de fluxo)
-│   │   ├── pg_ddl.sql        # DDL PostgreSQL
-│   │   ├── neo4j_constraints.cypher
-│   │   ├── data_flow.md
-│   │   └── raw_formats/      # Especificacoes de formato de dados brutos
-│   └── platform/
-│       └── docker/           # Arquivos Docker Compose e Dockerfiles
-└── data/                     # Saida local do pipeline (gitignored)
+│   └── platform/             # Docker, Airflow, monitoramento
+│
+├── scoring/                  # Motor de scoring SCI (planejado)
+│   ├── dimensions/           # Calculadores por dimensao
+│   ├── queries/              # Cypher e SQL para travessias
+│   └── tests/
+│
+├── backend/                  # API FastAPI (planejado)
+│   ├── app/                  # Routers, services, schemas, db
+│   └── tests/
+│
+├── frontend/                 # Frontend Next.js + React (planejado)
+│   ├── src/                  # Pages, components, lib, styles
+│   └── public/
+│
+├── deploy/                   # Deploy e CI/CD (planejado)
+│   ├── docker/               # Docker Compose prod e Dockerfiles
+│   ├── caddy/                # Proxy reverso + auto-HTTPS
+│   ├── ci/                   # GitHub Actions
+│   ├── e2e/                  # Testes end-to-end
+│   └── scripts/
+│
+├── docs/plans/               # Documentos de design e planejamento
+├── CLAUDE.md
+├── CONTRIBUTING.md           # Este arquivo
+├── README.md
+└── VigiaBR-PRD-v1.0.html    # Documento de Requisitos do Produto
 ```
 
 ---
@@ -321,15 +332,22 @@ O VigiaBR apresenta fatos, nunca acusacoes. Todo texto voltado ao usuario deve s
 ### Pipeline de Dados
 
 ```
-Spiders Scrapy → JSON/CSV bruto → DAGs Airflow → Transformar → Validar → Carregar
-                                                                   ↓           ↓
-                                                              PostgreSQL    Neo4j
-                                                              (tabular)    (grafo)
+Spiders Scrapy → JSON/CSV bruto → DAGs Airflow → Transformar → Analisar → Validar → Carregar
+                                                                              ↓           ↓
+                                                                         PostgreSQL    Neo4j
+                                                                         (tabular)    (grafo)
 ```
 
 1. **Extracao** (`pipeline/extraction/`): Spiders Scrapy coletam dados de APIs e portais oficiais. Downloaders em massa tratam datasets grandes (ex: dump CNPJ da Receita Federal).
-2. **Processamento** (`pipeline/processing/`): Transforma dados brutos em modelos Pydantic validados, depois carrega no PostgreSQL (dados tabulares) e Neo4j (relacionamentos em grafo).
+2. **Processamento** (`pipeline/processing/`): Transforma dados brutos em modelos Pydantic validados, executa analise de anomalias (Benford, HHI, valores redondos), e carrega no PostgreSQL e Neo4j.
 3. **Schemas** (`pipeline/schemas/`): Modelos SQLAlchemy compartilhados, tipos Pydantic, utilitarios de hash de PII e migracoes Alembic.
+
+### Camada de Aplicacao (planejada)
+
+4. **Scoring** (`scoring/`): Motor SCI — le PostgreSQL e Neo4j, calcula score 0-1000 por mandatario, gera registros de Inconsistencia.
+5. **Backend** (`backend/`): API REST FastAPI — serve dados de mandatarios, SCI, inconsistencias, timeline.
+6. **Frontend** (`frontend/`): Next.js + React — renderiza perfis, gauge SCI, cards de inconsistencia, graficos de patrimonio.
+7. **Deploy** (`deploy/`): Docker Compose prod, Caddy (HTTPS), GitHub Actions CI/CD, testes E2E.
 
 ### Pacotes do Workspace
 
@@ -339,9 +357,16 @@ O diretorio `pipeline/` e um [workspace uv](https://docs.astral.sh/uv/concepts/w
 |--------|-----------|-----------|
 | `schemas/` | `vigiabr-schemas` | Modelos SQLAlchemy, tipos Pydantic, migracoes Alembic, hash de PII |
 | `extraction/` | `vigiabr-extraction` | Spiders Scrapy, downloaders em massa |
-| `processing/` | `vigiabr-processing` | Etapas de transformacao, validacao e carga |
+| `processing/` | `vigiabr-processing` | Transformacao, analise de anomalias, validacao e carga |
 
 Tanto `extraction` quanto `processing` dependem de `schemas` como dependencia do workspace.
+
+Pacotes da camada de aplicacao (planejados):
+
+| Pacote | Nome PyPI | Descricao |
+|--------|-----------|-----------|
+| `scoring/` | `vigiabr-scoring` | Motor SCI, dimensoes, detector de inconsistencias |
+| `backend/` | `vigiabr-backend` | API REST FastAPI |
 
 ### Schemas de Banco de Dados
 
