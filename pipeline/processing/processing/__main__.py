@@ -9,10 +9,12 @@ Orchestrates the full pipeline for a single source:
 from __future__ import annotations
 
 import argparse
+import datetime
 import logging
 import os
 import sys
 import unicodedata
+import uuid
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -595,20 +597,39 @@ def _normalize_name(name: str) -> str:
 
 
 def _load_emenda_autoria_neo4j(result: TransformResult, neo4j: Any) -> None:
-    """Load AUTORIZOU: Mandatario -> Emenda (name-based resolution)."""
+    """Load AUTORIZOU: Mandatario -> Emenda (name-based resolution).
+
+    Builds a nome -> id_tse lookup from both the current result's mandatarios
+    AND existing Mandatario nodes already in Neo4j (for cross-source linking).
+    """
     autorias = result.relationships.get("emenda_autorias", [])
     if not autorias:
         return
 
     # Build nome -> id_tse lookup from mandatarios in current result
-    mandatarios = result.entities.get("mandatarios", [])
     nome_to_id: dict[str, str] = {}
+    mandatarios = result.entities.get("mandatarios", [])
     for m in mandatarios:
         d = _to_neo4j_dict(m)
         nome = d.get("nome")
         id_tse = d.get("id_tse")
         if nome and id_tse:
             nome_to_id[_normalize_name(nome)] = id_tse
+
+    # Also query existing Mandatario nodes in Neo4j for cross-source resolution
+    try:
+        with neo4j._driver.session() as session:
+            neo4j_result = session.run(
+                "MATCH (m:Mandatario) WHERE m.nome IS NOT NULL AND m.id_tse IS NOT NULL "
+                "RETURN m.nome AS nome, m.id_tse AS id_tse"
+            )
+            for record in neo4j_result:
+                norm = _normalize_name(record["nome"])
+                if norm not in nome_to_id:
+                    nome_to_id[norm] = record["id_tse"]
+        logger.info("AUTORIZOU: loaded %d mandatario names for resolution", len(nome_to_id))
+    except Exception as exc:
+        logger.warning("AUTORIZOU: failed to query Neo4j for mandatarios: %s", exc)
 
     rel_records = []
     unresolved = 0
@@ -639,10 +660,11 @@ def _load_emenda_autoria_neo4j(result: TransformResult, neo4j: Any) -> None:
             "AUTORIZOU", "Mandatario", "Emenda",
             "id_tse", "numero", rel_records,
         )
+        logger.info("AUTORIZOU: merged %d relationships", len(rel_records))
 
     if unresolved:
         logger.info(
-            "AUTORIZOU: %d emenda autorias unresolved (autor not in current mandatarios)",
+            "AUTORIZOU: %d emenda autorias unresolved (autor not found in mandatarios)",
             unresolved,
         )
 
@@ -676,15 +698,30 @@ def _load_contrato_empresa_neo4j(result: TransformResult, neo4j: Any) -> None:
 
 
 def _to_neo4j_dict(record: object) -> dict:
-    """Convert a Pydantic model or dict to a Neo4j-safe dict."""
+    """Convert a Pydantic model or dict to a Neo4j-safe dict.
+
+    Converts Python types that the Neo4j driver cannot serialise:
+    Decimal → float, UUID → str, date/datetime → ISO string.
+    """
     if isinstance(record, BaseModel):
         d = record.model_dump(mode="python")
     elif isinstance(record, dict):
-        d = record
+        d = record.copy()
     else:
         d = dict(record)
-    # Remove None values (Neo4j doesn't like null properties in SET)
-    return {k: v for k, v in d.items() if v is not None}
+
+    out: dict = {}
+    for k, v in d.items():
+        if v is None:
+            continue
+        if isinstance(v, Decimal):
+            v = float(v)
+        elif isinstance(v, uuid.UUID):
+            v = str(v)
+        elif isinstance(v, (datetime.date, datetime.datetime)):
+            v = v.isoformat()
+        out[k] = v
+    return out
 
 
 def main(argv: list[str] | None = None) -> None:
