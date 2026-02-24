@@ -1,8 +1,8 @@
 # VigiaBR Claude Code Pipeline Design
 
 **Date**: 2026-02-23
-**Source**: Forked and adapted from max (EverythingCode/max) pipeline
-**Approach**: Fork & Strip — copy max's battle-tested pipeline, remove CRM/Linear/Railway specifics, adapt for vigiaBR
+**Source**: Forked and adapted from a reference project's pipeline
+**Approach**: Fork & Strip — copy the reference project's battle-tested pipeline, remove CRM/Linear/Railway specifics, adapt for vigiaBR
 
 ## Requirements
 
@@ -13,11 +13,11 @@
 | Memory | claude-mem |
 | Deployment | TBD |
 | Git strategy | develop + main (feature → develop → main) |
-| Quality gates | Match max (Python + TypeScript) |
+| Quality gates | Match reference project (Python + TypeScript) |
 
 ## 1. CLAUDE.md (Routing Trunk)
 
-Rewritten for vigiaBR. Key differences from max:
+Rewritten for vigiaBR. Key differences from the reference project:
 
 - GitHub Issues instead of Linear (`gh issue` commands)
 - No Supabase/Drizzle — PostgreSQL + Neo4j direct
@@ -31,7 +31,7 @@ Rewritten for vigiaBR. Key differences from max:
 
 ### settings.json hooks
 
-| Hook | Script | Purpose | Changes from max |
+| Hook | Script | Purpose | Changes from ref |
 |------|--------|---------|-----------------|
 | SessionStart | `superpowers-session-start.sh` | Inject using-superpowers skill | None |
 | PreToolUse (Bash) | `check-conflict-markers.sh` | Block commits with conflict markers | None |
@@ -44,11 +44,11 @@ Rewritten for vigiaBR. Key differences from max:
 
 ### Permissions
 
-Same deny list as max (destructive git ops, gh deletes, force pushes). Remove `staging` branch references (vigiaBR uses develop + main only).
+Same deny list as the reference project (destructive git ops, gh deletes, force pushes). Remove `staging` branch references (vigiaBR uses develop + main only).
 
 ## 3. Agents
 
-| Agent | Role | Changes from max |
+| Agent | Role | Changes from ref |
 |-------|------|-----------------|
 | code-reviewer.md | Plan alignment & quality review | Minimal — generic enough as-is |
 | codebase-analyzer.md | /todo, /clean, /deps, /explain, /review | Remove pnpm specifics, add Python equivalents |
@@ -61,7 +61,7 @@ Same deny list as max (destructive git ops, gh deletes, force pushes). Remove `s
 | Command | Sub-commands | Adaptation |
 |---------|-------------|-----------|
 | `/plan` | explore, approach, write | GitHub Issue gates instead of Linear |
-| `/build` | feature, fix, test | Remove eval/max-test/test-auto |
+| `/build` | feature, fix, test | Remove eval/test-auto |
 | `/ship` | review, respond, deploy, debug-ci, fix-ci, git | Remove Railway deploy. Deploy TBD |
 | `/report` | weekly, metrics, compare | vigiaBR metrics (pipeline coverage, SCI, data freshness) |
 | `/evolve` | status, audit, suggest | No change |
@@ -74,7 +74,7 @@ Same deny list as max (destructive git ops, gh deletes, force pushes). Remove `s
 - `/git` → `/ship git`
 - `/measure` → eval impact (placeholder)
 
-### Removed from max
+### Removed from reference project
 
 `/contract-check`, `/docker-restart`, `/lint-python`, `/debug-lead`, `/debug-trace`, `/linear`, `/linear-breakdown`, `/railway`
 
@@ -94,7 +94,7 @@ exploring-codebase, designing-approaches, documenting-plans, writing-plans, buil
 
 ### Skipped (14 skills)
 
-deploying-to-railway, linear-manager, breaking-down-linear-issues, analyzing-traces, debugging-lead-traces, testing-max-demo, testing-max-webhooks, managing-eval-datasets, running-evals, managing-braintrust-scorers, test-case-scorer-review, simulating-customer-interactions, training-coding-memory, creating-pdf
+deploying-to-railway, linear-manager, breaking-down-linear-issues, analyzing-traces, debugging-lead-traces, testing-demo, testing-webhooks, managing-eval-datasets, running-evals, managing-braintrust-scorers, test-case-scorer-review, simulating-customer-interactions, training-coding-memory, creating-pdf
 
 ### New (create later)
 
@@ -110,7 +110,7 @@ deploying-to-railway, linear-manager, breaking-down-linear-issues, analyzing-tra
 | auto-merge.yml | Auto-merge when checks pass | Adapt required checks. Remove staging |
 | auto-merge-claude-config.yml | Instant merge for .claude/-only PRs | No change |
 
-Skipped 12 max-specific workflows (bots, deploy, publish, cleanup).
+Skipped 12 project-specific workflows (bots, deploy, publish, cleanup).
 
 ## 7. Git Setup
 

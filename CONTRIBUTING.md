@@ -59,7 +59,7 @@ Be respectful, constructive, and inclusive. We follow the [Contributor Covenant 
 
 ```bash
 # Clone the repository
-git clone https://github.com/guidevit-dealsmartai/vigiabr.git
+git clone https://github.com/devitese/vigiabr.git
 cd vigiabr
 
 # Switch to the develop branch (all work starts here)
@@ -417,7 +417,7 @@ For Neo4j constraint changes, update `pipeline/contracts/neo4j_constraints.cyphe
 
 ## Reporting Bugs
 
-[Open an issue](https://github.com/guidevit-dealsmartai/vigiabr/issues/new) with:
+[Open an issue](https://github.com/devitese/vigiabr/issues/new) with:
 
 - **Title**: Clear, concise description of the problem.
 - **Steps to reproduce**: Exact commands, input data, or URLs.

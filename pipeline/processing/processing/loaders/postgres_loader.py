@@ -59,7 +59,7 @@ class PostgresLoader:
     def upsert_batch(
         self,
         table_name: str,
-        records: list[BaseModel],
+        records: list[BaseModel | dict],
         conflict_columns: list[str],
     ) -> LoadResult:
         """Batch upsert using INSERT ... ON CONFLICT DO UPDATE SET.
@@ -112,12 +112,14 @@ class PostgresLoader:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _model_to_dict(record: BaseModel) -> dict[str, Any]:
-        """Serialise a Pydantic model to a plain dict suitable for SQL params.
+    def _model_to_dict(record: BaseModel | dict) -> dict[str, Any]:
+        """Serialise a Pydantic model or plain dict to a dict suitable for SQL params.
 
         Converts UUIDs, dates, datetimes, and Decimals to their native Python
         representations so psycopg can handle them directly.
         """
+        if isinstance(record, dict):
+            return record
         return record.model_dump(mode="python")
 
     def _execute_batch(

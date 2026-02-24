@@ -183,7 +183,7 @@ Data flows through file-based contracts — extraction writes JSONL files to `pi
 
 ```bash
 # Clone the repository
-git clone https://github.com/guidevit-dealsmartai/vigiabr.git
+git clone https://github.com/devitese/vigiabr.git
 cd vigiabr
 
 # Install all pipeline dependencies (resolves the workspace)

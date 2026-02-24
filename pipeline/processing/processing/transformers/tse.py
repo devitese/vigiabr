@@ -7,6 +7,7 @@ from typing import Iterator
 
 from models.mandatario import MandatarioCreateSchema
 from models.partido import PartidoCreateSchema
+from models.pessoa_fisica import PessoaFisicaCreateSchema, TipoPessoa
 from models.raw.tse_raw import (
     TseBemDeclaradoRaw,
     TseCandidatoRaw,
@@ -128,3 +129,13 @@ class TseTransformer(BaseTransformer):
             doador_cpf_cnpj_hash=doador_hash,
         )
         result.add_relationship("doacoes", doacao)
+
+        # Create PessoaFisica entity for PF donors so they exist as Neo4j
+        # nodes before RECEBEU_DOACAO edges are created.
+        if doador_hash and raw.tipo_doador == "PF":
+            pessoa = PessoaFisicaCreateSchema(
+                nome=raw.nome_doador,
+                cpf_hash=doador_hash,
+                tipo=TipoPessoa.DOADOR,
+            )
+            result.add_entity("pessoas_fisicas", pessoa)

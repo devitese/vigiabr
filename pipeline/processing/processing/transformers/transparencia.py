@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Iterator
 
 from models.contrato_gov import ContratoGovCreateSchema
@@ -83,6 +84,13 @@ class TransparenciaTransformer(BaseTransformer):
         )
         result.add_entity("emendas", emenda)
 
+        # Emit autoria relationship for name-based resolution at load time.
+        if raw.autor:
+            result.add_relationship("emenda_autorias", {
+                "emenda_numero": raw.numero,
+                "autor_nome": raw.autor,
+            })
+
         # Hash beneficiario CPF/CNPJ if present (for entity linking).
         if raw.beneficiario_cnpj_cpf:
             try:
@@ -106,6 +114,17 @@ class TransparenciaTransformer(BaseTransformer):
             # empresa_id (UUID) is resolved at load time by CNPJ lookup.
         )
         result.add_entity("contratos_gov", contrato)
+
+        # Emit contrato-empresa relationship for Neo4j linking.
+        # Use CNPJ basico (first 8 digits) to match Empresa nodes which are
+        # keyed by cnpj_basico from Receita Federal data.
+        if raw.cnpj_contratado:
+            cnpj_digits = re.sub(r"[^\d]", "", raw.cnpj_contratado)
+            if len(cnpj_digits) >= 8:
+                result.add_relationship("contrato_empresas", {
+                    "contrato_numero": raw.numero,
+                    "empresa_cnpj": cnpj_digits[:8],
+                })
 
         # Hash contracted company CNPJ for entity linking.
         if raw.cnpj_contratado:

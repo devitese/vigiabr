@@ -8,7 +8,7 @@ NEWSPIDER_MODULE = "vigiabr_spiders.spiders"
 ROBOTSTXT_OBEY = True
 
 # Identify ourselves
-USER_AGENT = "VigiaBR/0.1 (+https://github.com/guidevit-dealsmartai/vigiabr)"
+USER_AGENT = "VigiaBR/0.1 (+https://github.com/devitese/vigiabr)"
 
 # Conservative concurrency — public APIs, be polite
 CONCURRENT_REQUESTS = 4
