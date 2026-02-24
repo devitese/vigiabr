@@ -47,6 +47,7 @@ Then resume from where the previous context left off.
 - `develop` = integration branch.
 - Branch naming: `type/issue-number-short-description` (e.g., `feat/42-sci-endpoint`).
 - Merge strategy: squash merge to `develop`, merge commit from `develop` to `main`.
+- **Direct push to protected branches is allowed when the user explicitly requests it.** <!-- [evolve] -->
 
 ## Automation Architecture (Separation of Concerns)
 
