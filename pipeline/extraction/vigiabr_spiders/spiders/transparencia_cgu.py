@@ -32,10 +32,11 @@ class TransparenciaCguSpider(scrapy.Spider):
                 cb_kwargs={"ano": ano},
             )
 
-        # Contratos
+        # Contratos — first fetch organ codes, then crawl per organ
         yield scrapy.Request(
-            f"{self.BASE_URL}/contratos?pagina=1",
-            callback=self.parse_contratos,
+            f"{self.BASE_URL}/orgaos-siafi?pagina=1",
+            callback=self.parse_orgaos,
+            priority=-1,
         )
 
         # CEIS (sanctioned companies)
@@ -44,17 +45,47 @@ class TransparenciaCguSpider(scrapy.Spider):
             callback=self.parse_ceis,
         )
 
-        # Cartoes corporativos — crawl by year/month
+        # Cartoes corporativos — crawl by month ranges
         for ano in self.EMENDA_YEARS:
             for mes in range(1, 13):
-                mm = f"{mes:02d}"
+                inicio = f"01/{mes:02d}/{ano}"
+                # last day approximation — API accepts 31 for all months
+                fim = f"31/{mes:02d}/{ano}"
                 yield scrapy.Request(
                     f"{self.BASE_URL}/cartoes"
-                    f"?mesExtratoInicio={mm}&mesExtratoFim={mm}"
-                    f"&anoExtratoInicio={ano}&anoExtratoFim={ano}"
+                    f"?dataTransacaoInicio={inicio}"
+                    f"&dataTransacaoFim={fim}"
                     f"&pagina=1",
                     callback=self.parse_cartoes,
                 )
+
+    # ------------------------------------------------------------------
+    # Organ code discovery (for contratos)
+    # ------------------------------------------------------------------
+
+    def parse_orgaos(self, response):
+        data = response.json()
+        if not data:
+            return
+
+        for orgao in data:
+            codigo = orgao.get("codigo", "")
+            descricao = orgao.get("descricao", "")
+            if "INVALIDO" in descricao:
+                continue
+            yield scrapy.Request(
+                f"{self.BASE_URL}/contratos?codigoOrgao={codigo}&pagina=1",
+                callback=self.parse_contratos,
+            )
+
+        # Paginate organ list
+        if len(data) >= self.PAGE_SIZE:
+            next_page = _next_page_url(response.url)
+            yield scrapy.Request(
+                next_page,
+                callback=self.parse_orgaos,
+                priority=-1,
+            )
 
     # ------------------------------------------------------------------
     # Emendas (parliamentary amendments)
