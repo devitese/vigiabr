@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VigiaBR — Transparencia Publica</title>
+  <meta name="description" content="Plataforma aberta de monitoramento da consistencia de mandatarios brasileiros. Dados publicos, auditaveis, com fontes oficiais.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Skip to content -->
+  <a href="#main" class="sr-only" style="position:absolute;top:0;left:0;background:var(--red);color:white;padding:0.5rem 1rem;z-index:999;">Pular para o conteudo</a>
+
+  <!-- Navigation -->
+  <nav class="nav" role="navigation" aria-label="Principal">
+    <div class="container">
+      <a href="index.html" class="nav-brand">Vigia<span>BR</span></a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html" class="active">Inicio</a></li>
+        <li><a href="sobre.html">Sobre</a></li>
+        <li><a href="https://github.com/vigiabr" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+        <li class="nav-search">
+          <span class="nav-search-icon">&#x1F50D;</span>
+          <input type="search" placeholder="Buscar mandatario..." aria-label="Buscar mandatario">
+        </li>
+      </ul>
+      <button class="nav-hamburger" aria-label="Abrir menu" onclick="document.getElementById('navLinks').classList.toggle('open')">&#9776;</button>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <h1 class="hero-title">Vigia<span>BR</span></h1>
+      <p class="hero-subtitle">Transparencia publica baseada em dados oficiais. Score de Consistencia, trilha de evidencias, codigo aberto.</p>
+
+      <div class="search-hero" role="combobox" aria-expanded="false" aria-haspopup="listbox">
+        <span class="search-icon">&#x1F50D;</span>
+        <input
+          type="search"
+          id="heroSearch"
+          placeholder="Buscar por nome de deputado ou senador..."
+          aria-label="Buscar mandatario"
+          aria-autocomplete="list"
+          autocomplete="off"
+        >
+        <div class="search-dropdown" id="searchDropdown" role="listbox">
+          <a href="mandatario.html" class="search-result" role="option">
+            <div>
+              <div class="search-result-name">Roberto Almeida</div>
+              <div class="search-result-meta">PL/MG &middot; Senador</div>
+            </div>
+            <span class="search-result-sci sci-low">340</span>
+          </a>
+          <a href="mandatario.html" class="search-result" role="option">
+            <div>
+              <div class="search-result-name">Maria Santos</div>
+              <div class="search-result-meta">PT/SP &middot; Deputada Federal</div>
+            </div>
+            <span class="search-result-sci sci-high">780</span>
+          </a>
+          <a href="mandatario.html" class="search-result" role="option">
+            <div>
+              <div class="search-result-name">Ana Oliveira</div>
+              <div class="search-result-meta">PSOL/RJ &middot; Deputada Federal</div>
+            </div>
+            <span class="search-result-sci sci-high">920</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Content -->
+  <main id="main" class="page-content">
+
+    <!-- Featured: Lowest SCI -->
+    <section class="featured-section">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-label">Atencao</div>
+          <h2>Mandatarios com menor Score de Consistencia</h2>
+        </div>
+        <div class="featured-grid">
+
+          <!-- Card 1 -->
+          <a href="mandatario.html" class="mandatario-card">
+            <div class="mandatario-card-header">
+              <div class="mandatario-card-name">Carlos Mendes</div>
+              <span class="mandatario-card-sci sci-critical-bg">180</span>
+            </div>
+            <div class="mandatario-card-meta">
+              <span class="badge badge-party">PP</span>
+              <span class="badge badge-uf">BA</span>
+              <span class="badge-cargo">Deputado Federal</span>
+            </div>
+          </a>
+
+          <!-- Card 2 -->
+          <a href="mandatario.html" class="mandatario-card">
+            <div class="mandatario-card-header">
+              <div class="mandatario-card-name">Roberto Almeida</div>
+              <span class="mandatario-card-sci sci-low-bg">340</span>
+            </div>
+            <div class="mandatario-card-meta">
+              <span class="badge badge-party">PL</span>
+              <span class="badge badge-uf">MG</span>
+              <span class="badge-cargo">Senador</span>
+            </div>
+          </a>
+
+          <!-- Card 3 -->
+          <a href="mandatario.html" class="mandatario-card">
+            <div class="mandatario-card-header">
+              <div class="mandatario-card-name">Paulo Tavares</div>
+              <span class="mandatario-card-sci sci-critical-bg">210</span>
+            </div>
+            <div class="mandatario-card-meta">
+              <span class="badge badge-party">UNIAO</span>
+              <span class="badge badge-uf">GO</span>
+              <span class="badge-cargo">Deputado Federal</span>
+            </div>
+          </a>
+
+          <!-- Card 4 -->
+          <a href="mandatario.html" class="mandatario-card">
+            <div class="mandatario-card-header">
+              <div class="mandatario-card-name">Fernando Costa</div>
+              <span class="mandatario-card-sci sci-low-bg">290</span>
+            </div>
+            <div class="mandatario-card-meta">
+              <span class="badge badge-party">PSD</span>
+              <span class="badge badge-uf">PR</span>
+              <span class="badge-cargo">Deputado Federal</span>
+            </div>
+          </a>
+
+          <!-- Card 5 -->
+          <a href="mandatario.html" class="mandatario-card">
+            <div class="mandatario-card-header">
+              <div class="mandatario-card-name">Jose Barros</div>
+              <span class="mandatario-card-sci sci-low-bg">310</span>
+            </div>
+            <div class="mandatario-card-meta">
+              <span class="badge badge-party">MDB</span>
+              <span class="badge badge-uf">MA</span>
+              <span class="badge-cargo">Senador</span>
+            </div>
+          </a>
+
+          <!-- Card 6 -->
+          <a href="mandatario.html" class="mandatario-card">
+            <div class="mandatario-card-header">
+              <div class="mandatario-card-name">Ricardo Nunes</div>
+              <span class="mandatario-card-sci sci-low-bg">355</span>
+            </div>
+            <div class="mandatario-card-meta">
+              <span class="badge badge-party">REPUBLICANOS</span>
+              <span class="badge badge-uf">CE</span>
+              <span class="badge-cargo">Deputado Federal</span>
+            </div>
+          </a>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Featured: Highest SCI -->
+    <section class="featured-section">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-label">Destaque</div>
+          <h2>Mandatarios com maior Score de Consistencia</h2>
+        </div>
+        <div class="featured-grid">
+
+          <a href="mandatario.html" class="mandatario-card">
+            <div class="mandatario-card-header">
+              <div class="mandatario-card-name">Ana Oliveira</div>
+              <span class="mandatario-card-sci sci-high-bg">920</span>
+            </div>
+            <div class="mandatario-card-meta">
+              <span class="badge badge-party">PSOL</span>
+              <span class="badge badge-uf">RJ</span>
+              <span class="badge-cargo">Deputada Federal</span>
+            </div>
+          </a>
+
+          <a href="mandatario.html" class="mandatario-card">
+            <div class="mandatario-card-header">
+              <div class="mandatario-card-name">Camila Ribeiro</div>
+              <span class="mandatario-card-sci sci-high-bg">895</span>
+            </div>
+            <div class="mandatario-card-meta">
+              <span class="badge badge-party">REDE</span>
+              <span class="badge badge-uf">SP</span>
+              <span class="badge-cargo">Deputada Federal</span>
+            </div>
+          </a>
+
+          <a href="mandatario.html" class="mandatario-card">
+            <div class="mandatario-card-header">
+              <div class="mandatario-card-name">Daniel Soares</div>
+              <span class="mandatario-card-sci sci-high-bg">870</span>
+            </div>
+            <div class="mandatario-card-meta">
+              <span class="badge badge-party">PDT</span>
+              <span class="badge badge-uf">RS</span>
+              <span class="badge-cargo">Senador</span>
+            </div>
+          </a>
+
+          <a href="mandatario.html" class="mandatario-card">
+            <div class="mandatario-card-header">
+              <div class="mandatario-card-name">Maria Santos</div>
+              <span class="mandatario-card-sci sci-high-bg">780</span>
+            </div>
+            <div class="mandatario-card-meta">
+              <span class="badge badge-party">PT</span>
+              <span class="badge badge-uf">SP</span>
+              <span class="badge-cargo">Deputada Federal</span>
+            </div>
+          </a>
+
+          <a href="mandatario.html" class="mandatario-card">
+            <div class="mandatario-card-header">
+              <div class="mandatario-card-name">Patricia Lima</div>
+              <span class="mandatario-card-sci sci-high-bg">810</span>
+            </div>
+            <div class="mandatario-card-meta">
+              <span class="badge badge-party">PV</span>
+              <span class="badge badge-uf">MG</span>
+              <span class="badge-cargo">Deputada Federal</span>
+            </div>
+          </a>
+
+          <a href="mandatario.html" class="mandatario-card">
+            <div class="mandatario-card-header">
+              <div class="mandatario-card-name">Lucia Ferreira</div>
+              <span class="mandatario-card-sci sci-moderate-bg">550</span>
+            </div>
+            <div class="mandatario-card-meta">
+              <span class="badge badge-party">MDB</span>
+              <span class="badge badge-uf">RS</span>
+              <span class="badge-cargo">Senadora</span>
+            </div>
+          </a>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="footer-brand">Vigia<span>BR</span></div>
+          <div class="footer-tagline">Transparencia e um direito, nao um privilegio.</div>
+        </div>
+        <div>
+          <div class="footer-heading">Navegacao</div>
+          <ul class="footer-links">
+            <li><a href="index.html">Inicio</a></li>
+            <li><a href="sobre.html">Sobre</a></li>
+            <li><a href="sobre.html#metodologia">Metodologia</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-heading">Legal</div>
+          <ul class="footer-links">
+            <li><a href="https://github.com/vigiabr" target="_blank" rel="noopener noreferrer">Codigo-fonte (GitHub)</a></li>
+            <li><a href="sobre.html#legal">Aspectos legais</a></li>
+            <li><a href="#">Licenca AGPL-3.0</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        VigiaBR &copy; 2026 &middot; Dados publicos oficiais &middot; Codigo aberto sob AGPL-3.0
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Search dropdown toggle
+    const heroSearch = document.getElementById('heroSearch');
+    const searchDropdown = document.getElementById('searchDropdown');
+
+    heroSearch.addEventListener('input', function() {
+      if (this.value.length > 0) {
+        searchDropdown.classList.add('visible');
+        this.closest('[role="combobox"]').setAttribute('aria-expanded', 'true');
+      } else {
+        searchDropdown.classList.remove('visible');
+        this.closest('[role="combobox"]').setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    heroSearch.addEventListener('focus', function() {
+      if (this.value.length > 0) {
+        searchDropdown.classList.add('visible');
+      }
+    });
+
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.search-hero')) {
+        searchDropdown.classList.remove('visible');
+      }
+    });
+
+    // Keyboard navigation for search results
+    heroSearch.addEventListener('keydown', function(e) {
+      const results = searchDropdown.querySelectorAll('.search-result');
+      const active = searchDropdown.querySelector('.search-result:focus');
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (!active) {
+          results[0]?.focus();
+        } else {
+          const idx = Array.from(results).indexOf(active);
+          results[idx + 1]?.focus();
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (active) {
+          const idx = Array.from(results).indexOf(active);
+          if (idx === 0) heroSearch.focus();
+          else results[idx - 1]?.focus();
+        }
+      } else if (e.key === 'Escape') {
+        searchDropdown.classList.remove('visible');
+        heroSearch.focus();
+      }
+    });
+  </script>
+
+</body>
+</html>
