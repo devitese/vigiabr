@@ -14,9 +14,11 @@ DEFAULT_ARGS = {
     "start_date": datetime(2026, 1, 1),
 }
 
-EXTRACTION_CMD = "uv run --project /opt/pipeline/extraction scrapy crawl {spider}"
-BULK_DOWNLOAD_CMD = "uv run --project /opt/pipeline/extraction python -m extraction.bulk.{downloader}"
-PROCESSING_CMD = "uv run --project /opt/pipeline/processing python -m processing.run {source}"
+_PYPATH = "PYTHONPATH=/opt/pipeline/schemas:/opt/pipeline/extraction:/opt/pipeline/processing"
+
+EXTRACTION_CMD = f"cd /opt/pipeline/extraction && {_PYPATH} scrapy crawl {{spider}}"
+BULK_DOWNLOAD_CMD = f"cd /opt/pipeline/extraction && {_PYPATH} python -m bulk.{{downloader}}"
+PROCESSING_CMD = f"{_PYPATH} python -m processing.run {{source}}"
 
 
 def extract_cmd(spider: str) -> str:

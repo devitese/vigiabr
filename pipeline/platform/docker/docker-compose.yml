@@ -3,8 +3,8 @@
 
 x-airflow-common: &airflow-common
   build:
-    context: ../../
-    dockerfile: platform/docker/dockerfiles/Dockerfile.airflow
+    context: ../../../
+    dockerfile: pipeline/platform/docker/dockerfiles/Dockerfile.airflow
   environment: &airflow-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-}
@@ -18,7 +18,7 @@ x-airflow-common: &airflow-common
     VIGIABR_PG_URI: postgresql://${PG_USER:-vigiabr}:${PG_PASSWORD:-vigiabr}@postgres:5432/${PG_DB:-vigiabr}
     VIGIABR_NEO4J_URI: bolt://neo4j:7687
     VIGIABR_NEO4J_USER: ${NEO4J_USER:-neo4j}
-    VIGIABR_NEO4J_PASSWORD: ${NEO4J_PASSWORD:-vigiabr}
+    VIGIABR_NEO4J_PASSWORD: ${NEO4J_PASSWORD:-vigiabr1}
   volumes:
     - ../airflow/dags:/opt/airflow/dags:ro
     - ../airflow/plugins:/opt/airflow/plugins:ro
@@ -52,14 +52,14 @@ services:
     image: neo4j:5-community
     restart: unless-stopped
     environment:
-      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-vigiabr}
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-vigiabr1}
       NEO4J_PLUGINS: '["apoc"]'
       NEO4J_server_memory_heap_initial__size: 512m
       NEO4J_server_memory_heap_max__size: 1G
     volumes:
       - neo4j-data:/data
     healthcheck:
-      test: ["CMD-SHELL", "cypher-shell -u ${NEO4J_USER:-neo4j} -p ${NEO4J_PASSWORD:-vigiabr} 'RETURN 1' || exit 1"]
+      test: ["CMD-SHELL", "cypher-shell -u ${NEO4J_USER:-neo4j} -p ${NEO4J_PASSWORD:-vigiabr1} 'RETURN 1' || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 5
