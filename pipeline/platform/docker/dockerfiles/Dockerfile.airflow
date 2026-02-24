@@ -1,0 +1,24 @@
+FROM apache/airflow:2.9-python3.12
+
+USER root
+
+# Install uv for managing pipeline dependencies
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+# Create pipeline directory
+RUN mkdir -p /opt/pipeline
+
+# Copy pipeline workspace (schemas are needed for processing deps)
+COPY pipeline/pyproject.toml /opt/pipeline/pyproject.toml
+COPY pipeline/schemas/ /opt/pipeline/schemas/
+COPY pipeline/extraction/ /opt/pipeline/extraction/
+COPY pipeline/processing/ /opt/pipeline/processing/
+
+WORKDIR /opt/pipeline
+
+# Install pipeline dependencies
+RUN uv sync --frozen --no-dev 2>/dev/null || uv sync --no-dev
+
+USER airflow
+
+WORKDIR /opt/airflow
