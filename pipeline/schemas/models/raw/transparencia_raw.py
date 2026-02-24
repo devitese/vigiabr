@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 __all__ = [
     "TransparenciaEmendaRaw",
@@ -52,6 +52,32 @@ class TransparenciaCeisRaw(BaseModel):
     orgao_sancionador: Optional[str] = None
     data_inicio: Optional[date] = None
     data_fim: Optional[date] = None
+
+    @field_validator("tipo_sancao", mode="before")
+    @classmethod
+    def _extract_tipo_sancao(cls, v: object) -> str:
+        """API returns a dict like {"descricaoResumida": "..."}."""
+        if isinstance(v, dict):
+            return v.get("descricaoResumida") or v.get("descricaoPortal") or str(v)
+        return str(v)
+
+    @field_validator("data_inicio", "data_fim", mode="before")
+    @classmethod
+    def _parse_br_date(cls, v: object) -> date | None:
+        """Accept DD/MM/YYYY in addition to ISO format."""
+        if v is None or v == "":
+            return None
+        if isinstance(v, date):
+            return v
+        if isinstance(v, str):
+            if "/" in v:
+                try:
+                    return datetime.strptime(v, "%d/%m/%Y").date()
+                except ValueError:
+                    return None  # unparseable date
+            if v.lower().startswith("sem "):
+                return None  # "Sem informação"
+        return v  # let Pydantic handle ISO strings
 
 
 class TransparenciaCartaoCorporativoRaw(BaseModel):

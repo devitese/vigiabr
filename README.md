@@ -104,16 +104,18 @@ Todos os dados sao publicamente acessiveis sob a Lei de Acesso a Informacao (LAI
 
 O Score de Consistencia (SCI) e um indice composto de 0 a 1000 que mede o quao consistentes sao os registros oficiais de um politico em multiplas dimensoes.
 
-| Dimensao | Peso | Descricao |
-|----------|------|-----------|
-| Evolucao patrimonial vs salario | 25% | O crescimento patrimonial declarado esta alinhado com a renda conhecida? |
-| Correlacao de votos com setor de doadores | 20% | Os padroes de votacao favorecem setores dos doadores de campanha? |
-| Contratos com empresas familiares | 20% | Empresas ligadas a familiares recebem contratos governamentais? |
-| Vinculacao de beneficiarios de emendas | 15% | Os recursos de emendas fluem para entidades conectadas? |
-| Contratacao de familiares em gabinete | 12% | Familiares sao contratados com recursos publicos? |
-| Mudanca de voto apos doacao | 8% | O comportamento de votacao mudou apos receber doacoes? |
+| Dimensao | Descricao |
+|----------|-----------|
+| Evolucao patrimonial vs salario | O crescimento patrimonial declarado esta alinhado com a renda conhecida? |
+| Correlacao de votos com setor de doadores | Os padroes de votacao favorecem setores dos doadores de campanha? |
+| Contratos com empresas familiares | Empresas ligadas a familiares recebem contratos governamentais? |
+| Vinculacao de beneficiarios de emendas | Os recursos de emendas fluem para entidades conectadas? |
+| Contratacao de familiares em gabinete | Familiares sao contratados com recursos publicos? |
+| Mudanca de voto apos doacao | O comportamento de votacao mudou apos receber doacoes? |
 
 > O SCI nao implica irregularidade. Ele evidencia padroes estatisticos para escrutinio publico com rastreabilidade completa das fontes.
+>
+> **Nota:** Os pesos de cada dimensao ainda estao sendo definidos por calculo estatistico e serao publicados quando o modelo estiver validado.
 
 ---
 

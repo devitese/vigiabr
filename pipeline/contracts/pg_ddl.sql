@@ -51,20 +51,23 @@ CREATE TABLE empresas (
 );
 
 CREATE TABLE bens_patrimoniais (
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    mandatario_id       UUID NOT NULL REFERENCES mandatarios(id),
-    tipo                VARCHAR(100) NOT NULL,
-    descricao           TEXT,
-    valor_declarado     NUMERIC(18,2) NOT NULL,
-    ano_eleicao         INTEGER NOT NULL,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    mandatario_id           UUID REFERENCES mandatarios(id),
+    mandatario_id_externo   VARCHAR(20),
+    tipo                    VARCHAR(100) NOT NULL,
+    descricao               TEXT,
+    valor_declarado         NUMERIC(18,2) NOT NULL,
+    ano_eleicao             INTEGER NOT NULL,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE UNIQUE INDEX bens_patrimoniais_ext_uq
+    ON bens_patrimoniais (mandatario_id_externo, tipo, ano_eleicao);
 
 CREATE TABLE emendas (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     numero      VARCHAR(50) UNIQUE NOT NULL,
-    tipo        VARCHAR(50),
+    tipo        VARCHAR(100),
     valor_pago  NUMERIC(18,2),
     ano         INTEGER NOT NULL,
     funcao      VARCHAR(100),
