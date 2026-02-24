@@ -47,15 +47,15 @@ O VigiaBR preenche essa lacuna:
 API Camara ──────┐
 API Senado ──────┤
 Dumps TSE ───────┤          Spiders Scrapy    →  data/raw/{fonte}/    →  Transformadores  → PostgreSQL
-API CGU ─────────┤→         & downloaders        YYYY-MM-DD/             Validadores         Neo4j
-Dump CNPJ ───────┤          em massa             *.jsonl                 (dedup, hash PII)   SQLite/DuckDB
+API CGU ─────────┤→         & downloaders        YYYY-MM-DD/             Analyzers           Neo4j
+Dump CNPJ ───────┤          em massa             *.jsonl                 Validadores         SQLite/DuckDB
 Querido Diario ──┤                                                       Loaders             (CNPJ)
 API CNJ ─────────┘                                                       (upsert em lote)
 
-                            [Plataforma]
-                            DAGs Airflow orquestram: extrair → processar por fonte
-                            Docker Compose executa todos os servicos
-                            Grafana + Prometheus monitora a saude
+[Plataforma]                [Scoring]                 [Backend]               [Frontend]
+DAGs Airflow orquestram     Motor SCI lê PG+Neo4j     FastAPI serve dados     Next.js renderiza
+Docker Compose executa      calcula score 0-1000      REST endpoints          perfis, SCI, timeline
+Grafana + Prometheus        gera Inconsistencias      /mandatarios, /sci      cards de inconsistencia
 ```
 
 ### Stack Tecnologico
@@ -123,51 +123,62 @@ O Score de Consistencia (SCI) e um indice composto de 0 a 1000 que mede o quao c
 
 ```
 vigiabr/
-├── pipeline/
-│   ├── pyproject.toml              # Raiz do workspace uv
-│   ├── contracts/                  # Contratos de dados compartilhados
-│   │   ├── raw_formats/            # JSON Schema por fonte
-│   │   ├── pg_ddl.sql              # Definicoes de tabelas PostgreSQL
-│   │   ├── neo4j_constraints.cypher
-│   │   └── data_flow.md
-│   │
-│   ├── schemas/                    # Schemas de banco e tipos compartilhados
-│   │   ├── models/                 # Modelos Pydantic (um por entidade)
-│   │   ├── alembic/                # Migracoes PostgreSQL
-│   │   ├── neo4j/                  # Constraints e indices Cypher
-│   │   └── pii/                    # Hash de CPF (SHA-256, LGPD)
-│   │
-│   ├── extraction/                 # Spiders Scrapy e downloaders em massa
-│   │   ├── vigiabr_spiders/        # Projeto Scrapy
-│   │   │   └── spiders/            # Um spider por fonte
-│   │   ├── bulk/                   # Downloaders em massa CNPJ e TSE
-│   │   └── tests/
-│   │
-│   ├── processing/                 # Transformar, validar, carregar
-│   │   ├── processing/
-│   │   │   ├── transformers/       # JSON bruto → modelos Pydantic
-│   │   │   ├── validators/         # Dedup, hash de PII
-│   │   │   └── loaders/            # Upsert em lote PostgreSQL, Neo4j, DuckDB
-│   │   └── tests/
-│   │
-│   └── platform/                   # Infraestrutura e orquestracao
-│       ├── docker/                 # Docker Compose e Dockerfiles
-│       ├── airflow/                # DAGs (uma por fonte)
-│       ├── monitoring/             # Dashboards Grafana, config Prometheus
-│       └── scripts/                # Scripts de setup para desenvolvimento
+├── pipeline/                        # Pipeline de dados (implementado)
+│   ├── pyproject.toml               # Raiz do workspace uv
+│   ├── contracts/                   # Contratos de dados compartilhados
+│   ├── schemas/                     # Schemas de banco e tipos compartilhados
+│   ├── extraction/                  # Spiders Scrapy e downloaders em massa
+│   ├── processing/                  # Transformar, validar, carregar
+│   │   └── processing/
+│   │       ├── transformers/        # JSON bruto → modelos Pydantic
+│   │       ├── validators/          # Dedup, hash de PII
+│   │       ├── analyzers/           # Deteccao de anomalias (Benford, HHI, valores redondos)
+│   │       └── loaders/             # Upsert em lote PostgreSQL, Neo4j, DuckDB
+│   └── platform/                    # Docker, Airflow, monitoramento
 │
+├── scoring/                         # Motor de scoring SCI (planejado)
+│   ├── dimensions/                  # Calculadores por dimensao do SCI
+│   ├── queries/                     # Cypher e SQL para travessias de grafo
+│   └── tests/
+│
+├── backend/                         # API FastAPI (planejado)
+│   ├── app/
+│   │   ├── routers/                 # Endpoints REST
+│   │   ├── services/                # Logica de negocio
+│   │   ├── schemas/                 # Schemas de resposta da API
+│   │   └── db/                      # Conexoes com PostgreSQL e Neo4j
+│   └── tests/
+│
+├── frontend/                        # Frontend Next.js + React (planejado)
+│   ├── src/
+│   │   ├── app/                     # Pages (home, perfil, sobre)
+│   │   ├── components/              # Componentes reutilizaveis
+│   │   ├── lib/                     # Cliente API e tipos TypeScript
+│   │   └── styles/                  # CSS global (Tailwind)
+│   └── public/
+│
+├── deploy/                          # Deploy e CI/CD (planejado)
+│   ├── docker/                      # Docker Compose prod e Dockerfiles
+│   ├── caddy/                       # Proxy reverso + auto-HTTPS
+│   ├── ci/                          # GitHub Actions (lint, test, deploy)
+│   ├── e2e/                         # Testes end-to-end
+│   └── scripts/                     # Scripts de deploy e seed de dados
+│
+├── docs/plans/                      # Documentos de design e planejamento
 ├── CLAUDE.md
 ├── README.md
-└── .gitignore
+└── CONTRIBUTING.md
 ```
 
-O pipeline usa um **workspace monorepo uv** com tres pacotes Python:
+### Pacotes Python (workspace uv)
 
 | Pacote | Caminho | Descricao |
 |--------|---------|-----------|
 | `vigiabr-schemas` | `pipeline/schemas/` | Modelos Pydantic, migracoes Alembic, utilitarios de PII |
 | `vigiabr-extraction` | `pipeline/extraction/` | Spiders Scrapy e downloaders em massa |
-| `vigiabr-processing` | `pipeline/processing/` | Transformadores, validadores e loaders de banco |
+| `vigiabr-processing` | `pipeline/processing/` | Transformadores, validadores, analyzers e loaders |
+| `vigiabr-scoring` | `scoring/` | Motor SCI, dimensoes, detector de inconsistencias (planejado) |
+| `vigiabr-backend` | `backend/` | API REST FastAPI (planejado) |
 
 Os dados fluem atraves de contratos baseados em arquivos — a extracao escreve arquivos JSONL em `pipeline/data/raw/`, o processamento os le. Nao ha imports Python diretos entre os dois.
 
@@ -230,14 +241,19 @@ uv run --project pipeline/extraction python -m bulk.tse_dump_downloader
 
 A saida dos spiders e gravada em `pipeline/data/raw/{fonte}/YYYY-MM-DD/*.jsonl`.
 
-### Processamento — Transformar e Carregar
+### Processamento — Transformar, Analisar e Carregar
 
 ```bash
-# Processar uma fonte especifica
-uv run --project pipeline/processing python -m processing.run camara
+# Processar uma fonte especifica (transform → analyze → validate → load)
+uv run --project pipeline/processing python -m processing camara
 
 # Fontes: camara, senado, tse, transparencia, cnpj, querido_diario, cnj
+
+# Dry run (transform + analyze + validate, sem carregar nos bancos)
+uv run --project pipeline/processing python -m processing camara --dry-run
 ```
+
+Para a fonte `camara`, a fase de analise executa deteccao de anomalias (Benford, HHI, valores redondos) nas despesas CEAP e gera registros de `Inconsistencia` automaticamente.
 
 ### Orquestracao — DAGs do Airflow
 
@@ -286,12 +302,27 @@ Todo PII (especialmente numeros de CPF) **deve** ser hasheado com SHA-256 antes 
 
 ## Roadmap
 
-| Fase | Escopo | Status |
-|------|--------|--------|
-| **Fase 1 (MVP)** | Congresso Federal (Camara + Senado) — pipelines, SCI basico, perfis, cards de inconsistencia | Em Andamento |
-| **Fase 2** | Grafos interativos, visoes de familiares, scoring com ML, analise de discurso com NLP | Planejado |
-| **Fase 3** | Deputados estaduais, comparacao/ranking, API publica, exportacao PDF | Planejado |
-| **Fase 4** | Vereadores municipais, aplicativo mobile | Planejado |
+### Fase 1 (MVP) — Congresso Federal
+
+| Componente | Issue | Status |
+|------------|-------|--------|
+| Pipeline: schemas de banco | [#2](https://github.com/devitese/vigiabr/issues/2) | Concluido |
+| Pipeline: spiders de extracao | [#5](https://github.com/devitese/vigiabr/issues/5) | Concluido |
+| Pipeline: processamento (transformar, validar, carregar) | [#4](https://github.com/devitese/vigiabr/issues/4) | Concluido |
+| Pipeline: plataforma (Docker, Airflow, monitoramento) | [#3](https://github.com/devitese/vigiabr/issues/3) | Concluido |
+| Pipeline: deteccao de anomalias (Benford, HHI, valores redondos) | [#13](https://github.com/devitese/vigiabr/issues/13) | Planejado |
+| Motor de scoring SCI | [#8](https://github.com/devitese/vigiabr/issues/8) | Planejado |
+| API Backend (FastAPI) | [#9](https://github.com/devitese/vigiabr/issues/9) | Planejado |
+| Frontend (Next.js) | [#10](https://github.com/devitese/vigiabr/issues/10) | Planejado |
+| Deploy e CI/CD | [#11](https://github.com/devitese/vigiabr/issues/11) | Planejado |
+
+### Fases futuras
+
+| Fase | Escopo |
+|------|--------|
+| **Fase 2** | Grafos interativos, visoes de familiares, scoring com ML, analise de discurso com NLP |
+| **Fase 3** | Deputados estaduais, comparacao/ranking, API publica, exportacao PDF |
+| **Fase 4** | Vereadores municipais, aplicativo mobile |
 
 ---
 
