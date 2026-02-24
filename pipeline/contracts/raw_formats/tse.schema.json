@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vigiabr://raw/tse",
+  "title": "TSE — Raw JSONL Format",
+  "oneOf": [
+    { "$ref": "#/$defs/candidato" },
+    { "$ref": "#/$defs/bem_declarado" },
+    { "$ref": "#/$defs/doacao" },
+    { "$ref": "#/$defs/despesa_campanha" }
+  ],
+  "$defs": {
+    "candidato": {
+      "type": "object",
+      "required": ["_type", "sequencial", "nome", "cpf", "cargo", "sigla_uf", "ano_eleicao"],
+      "properties": {
+        "_type": { "const": "candidato" },
+        "sequencial": { "type": "string" },
+        "nome": { "type": "string" },
+        "cpf": { "type": "string" },
+        "numero_candidato": { "type": "string" },
+        "cargo": { "type": "string" },
+        "sigla_partido": { "type": "string" },
+        "sigla_uf": { "type": "string" },
+        "ano_eleicao": { "type": "integer" },
+        "situacao": { "type": "string" },
+        "resultado": { "type": "string" }
+      }
+    },
+    "bem_declarado": {
+      "type": "object",
+      "required": ["_type", "sequencial_candidato", "ano_eleicao", "tipo_bem", "valor"],
+      "properties": {
+        "_type": { "const": "bem_declarado" },
+        "sequencial_candidato": { "type": "string" },
+        "ano_eleicao": { "type": "integer" },
+        "tipo_bem": { "type": "string" },
+        "descricao": { "type": "string" },
+        "valor": { "type": "number" }
+      }
+    },
+    "doacao": {
+      "type": "object",
+      "required": ["_type", "sequencial_candidato", "ano_eleicao", "valor", "nome_doador"],
+      "properties": {
+        "_type": { "const": "doacao" },
+        "sequencial_candidato": { "type": "string" },
+        "ano_eleicao": { "type": "integer" },
+        "valor": { "type": "number" },
+        "nome_doador": { "type": "string" },
+        "cpf_cnpj_doador": { "type": "string" },
+        "tipo_doador": { "type": "string", "enum": ["PF", "PJ", "Partido", "Candidato"] },
+        "data_receita": { "type": "string", "format": "date" },
+        "descricao": { "type": "string" }
+      }
+    },
+    "despesa_campanha": {
+      "type": "object",
+      "required": ["_type", "sequencial_candidato", "ano_eleicao", "valor", "tipo_despesa"],
+      "properties": {
+        "_type": { "const": "despesa_campanha" },
+        "sequencial_candidato": { "type": "string" },
+        "ano_eleicao": { "type": "integer" },
+        "valor": { "type": "number" },
+        "tipo_despesa": { "type": "string" },
+        "nome_fornecedor": { "type": "string" },
+        "cnpj_cpf_fornecedor": { "type": "string" },
+        "data_despesa": { "type": "string", "format": "date" },
+        "descricao": { "type": "string" }
+      }
+    }
+  }
+}

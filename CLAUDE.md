@@ -47,6 +47,7 @@ Then resume from where the previous context left off.
 - `develop` = integration branch.
 - Branch naming: `type/issue-number-short-description` (e.g., `feat/42-sci-endpoint`).
 - Merge strategy: squash merge to `develop`, merge commit from `develop` to `main`.
+- **Direct push to protected branches is allowed when the user explicitly requests it.** <!-- [evolve] -->
 
 ## Automation Architecture (Separation of Concerns)
 
@@ -134,14 +135,6 @@ Key relationships: `FILIADO_A`, `VOTOU`, `TEM_FAMILIAR`, `CONTRATOU`, `SOCIO_DE`
 - Language in user-facing content must be strictly neutral and factual (LGPD/LAI compliant)
 - The PRD is at `VigiaBR-PRD-v1.0.html` — consult it for detailed specifications
 - Create GitHub Issue before creating a branch — reference issue number in branch name
-
-## Agent Orchestrator
-
-This repo uses an agent-orchestrator (`ao`) for managing parallel worker sessions:
-- Config: `agent-orchestrator.yaml`
-- Default branch: `develop`
-- Sessions use tmux with git worktrees (`~/.worktrees/`)
-- Dashboard available at `localhost:3001`
 
 ## Phased Rollout
 

@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vigiabr://raw/transparencia",
+  "title": "Portal Transparencia / CGU — Raw JSONL Format",
+  "oneOf": [
+    { "$ref": "#/$defs/emenda" },
+    { "$ref": "#/$defs/contrato" },
+    { "$ref": "#/$defs/ceis" },
+    { "$ref": "#/$defs/cartao_corporativo" }
+  ],
+  "$defs": {
+    "emenda": {
+      "type": "object",
+      "required": ["_type", "numero", "autor", "ano", "valor_pago"],
+      "properties": {
+        "_type": { "const": "emenda" },
+        "numero": { "type": "string" },
+        "autor": { "type": "string" },
+        "tipo": { "type": "string" },
+        "ano": { "type": "integer" },
+        "valor_empenhado": { "type": "number" },
+        "valor_pago": { "type": "number" },
+        "funcao": { "type": "string" },
+        "subfuncao": { "type": "string" },
+        "beneficiario_nome": { "type": "string" },
+        "beneficiario_cnpj_cpf": { "type": "string" },
+        "localidade": { "type": "string" }
+      }
+    },
+    "contrato": {
+      "type": "object",
+      "required": ["_type", "numero", "orgao", "valor", "data_assinatura"],
+      "properties": {
+        "_type": { "const": "contrato" },
+        "numero": { "type": "string" },
+        "orgao": { "type": "string" },
+        "objeto": { "type": "string" },
+        "valor": { "type": "number" },
+        "data_assinatura": { "type": "string", "format": "date" },
+        "data_fim_vigencia": { "type": "string", "format": "date" },
+        "cnpj_contratado": { "type": "string" },
+        "nome_contratado": { "type": "string" },
+        "modalidade_licitacao": { "type": "string" }
+      }
+    },
+    "ceis": {
+      "type": "object",
+      "required": ["_type", "cnpj_cpf", "nome", "tipo_sancao"],
+      "properties": {
+        "_type": { "const": "ceis" },
+        "cnpj_cpf": { "type": "string" },
+        "nome": { "type": "string" },
+        "tipo_sancao": { "type": "string" },
+        "orgao_sancionador": { "type": "string" },
+        "data_inicio": { "type": "string", "format": "date" },
+        "data_fim": { "type": "string", "format": "date" }
+      }
+    },
+    "cartao_corporativo": {
+      "type": "object",
+      "required": ["_type", "cpf_portador", "nome_portador", "valor", "data"],
+      "properties": {
+        "_type": { "const": "cartao_corporativo" },
+        "cpf_portador": { "type": "string" },
+        "nome_portador": { "type": "string" },
+        "valor": { "type": "number" },
+        "data": { "type": "string", "format": "date" },
+        "estabelecimento": { "type": "string" },
+        "cnpj_estabelecimento": { "type": "string" }
+      }
+    }
+  }
+}

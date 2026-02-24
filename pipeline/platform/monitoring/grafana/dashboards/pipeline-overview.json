@@ -1,0 +1,101 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Airflow DAG Run Status",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "airflow_dag_processing_total_parse_time",
+          "legendFormat": "{{dag_id}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "title": "PostgreSQL Active Connections",
+      "type": "gauge",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "pg_stat_activity_count",
+          "legendFormat": "connections"
+        }
+      ]
+    },
+    {
+      "title": "Neo4j Node Count",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "targets": [
+        {
+          "expr": "neo4j_database_count_node",
+          "legendFormat": "nodes"
+        }
+      ]
+    },
+    {
+      "title": "DAG Task Duration Over Time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
+      "targets": [
+        {
+          "expr": "airflow_dag_run_duration_seconds",
+          "legendFormat": "{{dag_id}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "title": "Pipeline Data Volume (raw files)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "targets": [
+        {
+          "expr": "airflow_dag_run_task_instance_count",
+          "legendFormat": "{{dag_id}} - {{state}}"
+        }
+      ]
+    },
+    {
+      "title": "Service Health",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "targets": [
+        {
+          "expr": "up",
+          "legendFormat": "{{job}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+          ]
+        }
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["vigiabr", "pipeline"],
+  "templating": { "list": [] },
+  "time": { "from": "now-24h", "to": "now" },
+  "title": "VigiaBR Pipeline Overview",
+  "uid": "vigiabr-pipeline-overview"
+}

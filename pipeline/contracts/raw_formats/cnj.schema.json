@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vigiabr://raw/cnj",
+  "title": "CNJ DataJud — Raw JSONL Format",
+  "oneOf": [
+    { "$ref": "#/$defs/processo" }
+  ],
+  "$defs": {
+    "processo": {
+      "type": "object",
+      "required": ["_type", "numero_cnj", "classe", "tribunal"],
+      "properties": {
+        "_type": { "const": "processo" },
+        "numero_cnj": { "type": "string", "pattern": "^\\d{7}-\\d{2}\\.\\d{4}\\.\\d\\.\\d{2}\\.\\d{4}$" },
+        "classe": { "type": "string" },
+        "assuntos": { "type": "array", "items": { "type": "string" } },
+        "tribunal": { "type": "string" },
+        "vara": { "type": "string" },
+        "data_ajuizamento": { "type": "string", "format": "date" },
+        "situacao": { "type": "string" },
+        "valor_causa": { "type": "number" },
+        "partes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["nome", "tipo"],
+            "properties": {
+              "nome": { "type": "string" },
+              "cpf_cnpj": { "type": "string" },
+              "tipo": { "type": "string", "enum": ["Autor", "Reu", "Terceiro"] }
+            }
+          }
+        }
+      }
+    }
+  }
+}

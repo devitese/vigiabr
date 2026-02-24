@@ -1,0 +1,150 @@
+# VigiaBR — Production-ready Docker Compose
+# Front 4: Platform services for data pipeline
+
+x-airflow-common: &airflow-common
+  build:
+    context: ../../../
+    dockerfile: pipeline/platform/docker/dockerfiles/Dockerfile.airflow
+  environment: &airflow-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-}
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_DB_USER:-airflow}:${AIRFLOW_DB_PASSWORD:-airflow}@postgres:5432/${AIRFLOW_DB_NAME:-airflow}
+    AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY:-vigiabr-dev-secret}
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "false"
+    AIRFLOW__LOGGING__BASE_LOG_FOLDER: /opt/airflow/logs
+    # Pipeline database connections (passed to DAGs via env)
+    VIGIABR_PG_URI: postgresql://${PG_USER:-vigiabr}:${PG_PASSWORD:-vigiabr}@postgres:5432/${PG_DB:-vigiabr}
+    VIGIABR_NEO4J_URI: bolt://neo4j:7687
+    VIGIABR_NEO4J_USER: ${NEO4J_USER:-neo4j}
+    VIGIABR_NEO4J_PASSWORD: ${NEO4J_PASSWORD:-vigiabr1}
+  volumes:
+    - ../airflow/dags:/opt/airflow/dags:ro
+    - ../airflow/plugins:/opt/airflow/plugins:ro
+    - airflow-logs:/opt/airflow/logs
+    - pipeline-data:/opt/pipeline/data
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  # -- Databases --
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_USER:-vigiabr}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-vigiabr}
+      POSTGRES_DB: ${PG_DB:-vigiabr}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-vigiabr}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "${PG_PORT:-5433}:5432"
+
+  neo4j:
+    image: neo4j:5-community
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-vigiabr1}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1G
+    volumes:
+      - neo4j-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u ${NEO4J_USER:-neo4j} -p ${NEO4J_PASSWORD:-vigiabr1} 'RETURN 1' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    ports:
+      - "${NEO4J_HTTP_PORT:-7474}:7474"
+      - "${NEO4J_BOLT_PORT:-7687}:7687"
+
+  # -- Airflow --
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username ${AIRFLOW_ADMIN_USER:-admin} \
+          --password ${AIRFLOW_ADMIN_PASSWORD:-admin} \
+          --firstname Admin \
+          --lastname User \
+          --role Admin \
+          --email admin@vigiabr.org || true
+    restart: "no"
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: airflow webserver
+    restart: unless-stopped
+    ports:
+      - "${AIRFLOW_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: airflow scheduler
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --hostname $(hostname) || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  # -- Monitoring --
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-vigiabr}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  postgres-data:
+  neo4j-data:
+  airflow-logs:
+  pipeline-data:
+  prometheus-data:
+  grafana-data:

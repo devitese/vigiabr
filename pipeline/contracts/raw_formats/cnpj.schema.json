@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vigiabr://raw/cnpj",
+  "title": "Receita Federal CNPJ — Raw JSONL Format",
+  "oneOf": [
+    { "$ref": "#/$defs/empresa" },
+    { "$ref": "#/$defs/socio" },
+    { "$ref": "#/$defs/estabelecimento" }
+  ],
+  "$defs": {
+    "empresa": {
+      "type": "object",
+      "required": ["_type", "cnpj_basico", "razao_social", "natureza_juridica"],
+      "properties": {
+        "_type": { "const": "empresa" },
+        "cnpj_basico": { "type": "string" },
+        "razao_social": { "type": "string" },
+        "natureza_juridica": { "type": "string" },
+        "qualificacao_responsavel": { "type": "string" },
+        "capital_social": { "type": "number" },
+        "porte": { "type": "string", "enum": ["ME", "EPP", "DEMAIS", "NAO_INFORMADO"] }
+      }
+    },
+    "socio": {
+      "type": "object",
+      "required": ["_type", "cnpj_basico", "nome_socio", "tipo_socio"],
+      "properties": {
+        "_type": { "const": "socio" },
+        "cnpj_basico": { "type": "string" },
+        "tipo_socio": { "type": "integer", "enum": [1, 2, 3] },
+        "nome_socio": { "type": "string" },
+        "cpf_cnpj_socio": { "type": "string" },
+        "qualificacao": { "type": "string" },
+        "data_entrada": { "type": "string", "format": "date" },
+        "percentual_capital": { "type": "number" },
+        "representante_legal": { "type": "string" }
+      }
+    },
+    "estabelecimento": {
+      "type": "object",
+      "required": ["_type", "cnpj_basico", "cnpj_ordem", "cnpj_dv"],
+      "properties": {
+        "_type": { "const": "estabelecimento" },
+        "cnpj_basico": { "type": "string" },
+        "cnpj_ordem": { "type": "string" },
+        "cnpj_dv": { "type": "string" },
+        "situacao_cadastral": { "type": "string" },
+        "data_situacao": { "type": "string", "format": "date" },
+        "cnae_principal": { "type": "string" },
+        "cnaes_secundarios": { "type": "array", "items": { "type": "string" } },
+        "logradouro": { "type": "string" },
+        "municipio": { "type": "string" },
+        "uf": { "type": "string" },
+        "cep": { "type": "string" }
+      }
+    }
+  }
+}
